@@ -10,7 +10,7 @@ Install-Module PSParallel
 # ping all machines in a subnet
 1..256 | Invoke-Parallel {
     $ip = "192.168.0.$_" 
-    $res = ping.exe -v4 -w20 $ip
+    $res = ping.exe -4 -a -w 20 $ip
     [PSCustomObject] @{IP=$ip;Result=$res}
   }
 ```
