@@ -32,3 +32,6 @@ The overhead of spinning up new PowerShell classes is non-zero. Invoke-Parallel 
 
 ##Contributions
 Pull requests and/or suggestions are more than welcome.
+
+###Acknowlegementes
+The idea and the basis for the implementation comes from [RamblingCookieMonster](https://github.com/RamblingCookieMonster).
