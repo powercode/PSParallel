@@ -8,10 +8,8 @@ namespace PSParallel
 	{
 		private readonly PowershellPool m_pool;
 		private readonly PowerShellPoolStreams m_poolStreams;
-		private PowerShell m_powerShell;
-		private readonly AutoResetEvent m_resetEvent = new AutoResetEvent(false);
-		public PowerShell PowerShell => m_powerShell;
-		public WaitHandle WaitHandle => m_resetEvent;
+		private PowerShell m_powerShell;		
+		public PowerShell PowerShell => m_powerShell;		
 		private readonly PSDataCollection<PSObject> m_input =new PSDataCollection<PSObject>();
 		private PSDataCollection<PSObject> m_output;
 
@@ -32,8 +30,8 @@ namespace PSParallel
 				case PSInvocationState.Completed:
 				case PSInvocationState.Failed:
 					ReturnPowerShell(m_powerShell);
-					m_pool.ReportCompletion();
 					CreatePowerShell();
+					m_pool.ReportCompletion(this);
 
 					break;
 			}
@@ -47,7 +45,6 @@ namespace PSParallel
 			m_powerShell = powerShell;
 			m_output = new PSDataCollection<PSObject>();
 			m_output.DataAdded += OutputOnDataAdded;
-			m_resetEvent.Set();
 		}
 
 		private void ReturnPowerShell(PowerShell powershell)
@@ -92,8 +89,6 @@ namespace PSParallel
 
 		public void Dispose()
 		{
-			m_resetEvent.Set();
-			m_resetEvent.Dispose();
 			if (m_powerShell != null)
 			{
 				UnhookStreamEvents(m_powerShell.Streams);

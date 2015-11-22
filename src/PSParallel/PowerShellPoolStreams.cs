@@ -20,7 +20,7 @@ namespace PSParallel
 			Progress.Dispose();
 			Error.Dispose();
 			Information.Dispose();
-			Verbose.Dispose();	
+			Verbose.Dispose();
 		}
 	}
 }

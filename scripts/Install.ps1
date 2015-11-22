@@ -30,7 +30,7 @@ $moduleFileList = @(
 	'en-US\about_PSParallel.Help.txt'
     
 )
-$binaryFileList = 'src\PsParallel\bin\Release\PSParallel.dll'
+$binaryFileList = 'src\PsParallel\bin\Release\PSParallel.*'
 
 
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Management.Automation;
@@ -11,11 +12,10 @@ namespace PSParallel
 	{
 		private int m_busyCount;
 		private int m_processedCount;
-		private readonly int m_poolSize;
 		private readonly CancellationToken m_cancellationToken;
-		private readonly WaitHandle[] m_powerShellAndCancelWaitHandles;
 		private readonly RunspacePool m_runspacePool;
 		private readonly List<PowerShellPoolMember> m_poolMembers;
+		private readonly BlockingCollection<PowerShellPoolMember> m_availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentStack<PowerShellPoolMember> ());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
 
 		public int ProcessedCount => m_processedCount;
@@ -23,17 +23,15 @@ namespace PSParallel
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
 			m_poolMembers= new List<PowerShellPoolMember>(poolSize);
-			m_poolSize = poolSize;
 			m_processedCount = 0;
 			m_cancellationToken = cancellationToken;
-			m_powerShellAndCancelWaitHandles = new WaitHandle[poolSize + 1];
+
 			for (int i = 0; i < poolSize; i++)
 			{
 				var powerShellPoolMember = new PowerShellPoolMember(this);
 				m_poolMembers.Add(powerShellPoolMember);
-				m_powerShellAndCancelWaitHandles[i] = powerShellPoolMember.WaitHandle;
+				m_availablePoolMembers.Add(powerShellPoolMember);
 			}
-			m_powerShellAndCancelWaitHandles[poolSize] = cancellationToken.WaitHandle;
 
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(initialSessionState);
 			m_runspacePool.SetMaxRunspaces(poolSize);
@@ -75,14 +73,8 @@ namespace PSParallel
 
 		private PowerShellPoolMember WaitForAvailablePowershell()
 		{
-			var index = WaitHandle.WaitAny(m_powerShellAndCancelWaitHandles);
-			if (index == m_poolSize)
-			{
-				return null;
-			}
-			var poolmember = m_poolMembers[index];
-			var ps = poolmember.PowerShell;
-			ps.RunspacePool = m_runspacePool;
+			var poolmember = m_availablePoolMembers.Take(m_cancellationToken);
+			poolmember.PowerShell.RunspacePool = m_runspacePool;
 			return poolmember;
 		}
 
@@ -94,12 +86,14 @@ namespace PSParallel
 				pm.Dispose();
 			}
 			Streams.Dispose();
+			m_availablePoolMembers.Dispose();
 		}
 
-		public void ReportCompletion()
+		public void ReportCompletion(PowerShellPoolMember poolmember)
 		{
 			Interlocked.Decrement(ref m_busyCount);
 			Interlocked.Increment(ref m_processedCount);
+			m_availablePoolMembers.Add(poolmember);
 		}
 	}
 }

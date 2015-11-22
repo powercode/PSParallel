@@ -27,7 +27,7 @@ namespace PSParallel
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
 		[Parameter]
-		[ValidateRange(1,63)]
+		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
@@ -132,7 +132,7 @@ namespace PSParallel
 					m_progressManager.TotalCount = m_input.Count;
 					foreach (var i in m_input)
 					{
-						var pr = m_progressManager.GetCurrentProgressRecord(i.ToString());
+						var pr = m_progressManager.GetCurrentProgressRecord(i.ToString(), m_powershellPool.ProcessedCount);
 						WriteProgress(pr);
 						m_powershellPool.AddInput(ScriptBlock, i);
 						WriteOutputs();

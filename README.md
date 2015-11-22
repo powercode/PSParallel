@@ -8,11 +8,7 @@ Install-Module PSParallel
 
 ```PowerShell
 # ping all machines in a subnet
-1..256 | Invoke-Parallel {
-    $ip = "192.168.0.$_" 
-    $res = ping.exe -4 -a -w 20 $ip
-    [PSCustomObject] @{IP=$ip;Result=$res}
-  }
+(1..255).Foreach{"192.168.0.$_"} | Invoke-Parallel { [PSCustomObject] @{IP=$_;Result=ping.exe -4 -a -w 20 $_}}
 ```
 
 Variables are captured from the parent session but functions are not.
@@ -22,7 +18,7 @@ To control the degree of parallelism, i.e. the number of concurrent runspaces, u
 
 ```PowerShell
 # process lots of crash dumps
-Get-ChildItem -recurce *.dmp | Invoke-Parallel -ThrottleLimit 32 -ProgressActivity "Processing dumps" {
+Get-ChildItem -recurce *.dmp | Invoke-Parallel -ThrottleLimit 64 -ProgressActivity "Processing dumps" {
    [PSCustomObject] @{ Dump=$_; Analysis = cdb.exe -z $_.fullname -c '"!analyze -v;q"'
   }
 ```
