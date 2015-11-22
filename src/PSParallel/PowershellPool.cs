@@ -10,6 +10,7 @@ namespace PSParallel
 	class PowershellPool : IDisposable
 	{
 		private int m_busyCount;
+		private int m_processedCount;
 		private readonly int m_poolSize;
 		private readonly CancellationToken m_cancellationToken;
 		private readonly WaitHandle[] m_powerShellAndCancelWaitHandles;
@@ -17,10 +18,13 @@ namespace PSParallel
 		private readonly List<PowerShellPoolMember> m_poolMembers;
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
 
+		public int ProcessedCount => m_processedCount;
+
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
 			m_poolMembers= new List<PowerShellPoolMember>(poolSize);
 			m_poolSize = poolSize;
+			m_processedCount = 0;
 			m_cancellationToken = cancellationToken;
 			m_powerShellAndCancelWaitHandles = new WaitHandle[poolSize + 1];
 			for (int i = 0; i < poolSize; i++)
@@ -89,11 +93,13 @@ namespace PSParallel
 			{
 				pm.Dispose();
 			}
+			Streams.Dispose();
 		}
 
 		public void ReportCompletion()
 		{
 			Interlocked.Decrement(ref m_busyCount);
+			Interlocked.Increment(ref m_processedCount);
 		}
 	}
 }

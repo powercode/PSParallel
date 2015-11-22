@@ -8,7 +8,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace PSParallelTests
 {
 	[TestClass]
-	public class InvokeParallelTests : IDisposable
+	public sealed class InvokeParallelTests : IDisposable
 	{
 		readonly RunspacePool m_runspacePool;
 

@@ -41,6 +41,7 @@
     <Reference Include="System.Management.Automation" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="InvokeParallelCommand.cs" />
     <Compile Include="PowerShellInvokation.cs" />
     <Compile Include="PowershellPool.cs" />

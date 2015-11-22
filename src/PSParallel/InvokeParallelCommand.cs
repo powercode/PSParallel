@@ -8,7 +8,7 @@ namespace PSParallel
 {
 	[Alias("ipa")]
 	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
-	public class InvokeParallelCommand : PSCmdlet, IDisposable
+	public sealed class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
 		[Parameter(Mandatory = true, Position = 0)]
 		public ScriptBlock ScriptBlock { get; set; }
@@ -204,6 +204,7 @@ namespace PSParallel
 		public void Dispose()
 		{
 			m_powershellPool.Dispose();
+			m_cancelationTokenSource.Dispose();
 		}
 
 	}

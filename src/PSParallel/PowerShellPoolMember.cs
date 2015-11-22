@@ -98,7 +98,8 @@ namespace PSParallel
 			{
 				UnhookStreamEvents(m_powerShell.Streams);
 			}
-			m_output?.Dispose();
+			m_output.Dispose();
+			m_input.Dispose();
 			m_powerShell?.Dispose();
 		}
 
