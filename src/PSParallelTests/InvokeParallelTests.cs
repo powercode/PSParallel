@@ -28,7 +28,7 @@ namespace PSParallelTests
 			ps.RunspacePool = m_runspacePool;
 
 			ps.AddCommand("Invoke-Parallel")				
-				.AddParameter("Process", ScriptBlock.Create("$_* 2"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
 				.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> {1,2,3,4,5};
 			input.Complete();
@@ -44,7 +44,7 @@ namespace PSParallelTests
 			ps.RunspacePool = m_runspacePool;
 
 			ps.AddCommand("Invoke-Parallel")
-				.AddParameter("Process", ScriptBlock.Create("$_* 2"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
 				.AddParameter("ThrottleLimit", 10);							
 			var input = new PSDataCollection<int>(Enumerable.Range(1,1000));
 			input.Complete();
@@ -62,7 +62,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();			
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel",false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Verbose $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -79,7 +79,7 @@ namespace PSParallelTests
 			ps.RunspacePool = m_runspacePool;			
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Verbose $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -98,7 +98,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Debug $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Debug $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -116,7 +116,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Debug $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Debug $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -134,7 +134,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Warning $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Warning $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -152,7 +152,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Warning $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Warning $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -171,7 +171,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Error -Message $_ -TargetObject $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Error -Message $_ -TargetObject $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -189,7 +189,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-					.AddParameter("Process", ScriptBlock.Create("Write-Error -message $_ -TargetObject $_"))
+					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Error -message $_ -TargetObject $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
@@ -207,7 +207,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-				.AddParameter("Process", ScriptBlock.Create("$x -eq 10"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("$x -eq 10"))
 				.AddParameter("ThrottleLimit", 1)
 				.AddParameter("InputObject", 1);
 						
@@ -224,7 +224,7 @@ namespace PSParallelTests
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-				.AddParameter("Process", ScriptBlock.Create("$y = $x * 5; $y"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("$y = $x * 5; $y"))
 				.AddParameter("ThrottleLimit", 1)
 				.AddParameter("InputObject", 1);	
 
@@ -240,7 +240,7 @@ namespace PSParallelTests
 
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-				.AddParameter("Process", ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
 				.AddParameter("ThrottleLimit", 1);				
 
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
@@ -259,7 +259,7 @@ namespace PSParallelTests
 
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
-				.AddParameter("Process", ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
+				.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
 				.AddParameter("ThrottleLimit", 1)
 				.AddParameter("NoProgress");
 

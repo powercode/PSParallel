@@ -54,12 +54,6 @@
     <Compile Include="InvokeParallelTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\PSParallell\PSParallel.csproj">
-      <Project>{d660b110-98cc-456a-b0a2-ed1c3be9a25a}</Project>
-      <Name>PSParallel</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

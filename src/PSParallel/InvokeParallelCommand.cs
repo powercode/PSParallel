@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Management.Automation;
 using System.Management.Automation.Language;
 using System.Management.Automation.Runspaces;
-using System.Runtime.CompilerServices;
 using System.Threading;
 namespace PSParallel
 {
+	[Alias("ipa")]
 	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
 	// ReSharper disable once UnusedMember.Global
 	public class InvokeParallelCommand : PSCmdlet, IDisposable
@@ -14,19 +14,19 @@ namespace PSParallel
 		[Parameter(Mandatory = true, Position = 0)]
 		// ReSharper disable once MemberCanBePrivate.Global
 		// ReSharper disable once UnusedAutoPropertyAccessor.Global
-		public ScriptBlock Process { get; set; }
+		public ScriptBlock ScriptBlock { get; set; }
 
+		[Alias("ppi")]
 		[Parameter(ParameterSetName = "Progress")]
-		public int ParentActivityId { get; set; } = -1;
+		public int ParentProgressId { get; set; } = -1;
+		[Alias("pi")]
 		[Parameter(ParameterSetName = "Progress")]
-		public int ActivityId { get; set; } = 47;
+		public int ProgressId { get; set; } = 1000;
 
+		[Alias("pa")]
 		[Parameter(ParameterSetName = "Progress")]
 		[ValidateNotNullOrEmpty]
-		public string Activity { get; set; } = "Invoke-Parallel";
-		[Parameter(ParameterSetName = "Progress")]
-		[ValidateNotNullOrEmpty]
-		public string StatusDescription { get; set; }
+		public string ProgressActivity { get; set; } = "Invoke-Parallel";		
 
 		[Parameter()]
 		[ValidateRange(1,48)]
@@ -110,12 +110,12 @@ namespace PSParallel
 
 		protected override void BeginProcessing()
 		{
-			m_initialSessionState = GetSessionState(Process, SessionState);
+			m_initialSessionState = GetSessionState(ScriptBlock, SessionState);
 			m_powershellPool = new PowershellPool(ThrottleLimit,m_initialSessionState, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
 			{
-				m_progressManager = new ProgressManager(ActivityId, Activity, $"Processing with {ThrottleLimit} workers", ParentActivityId);
+				m_progressManager = new ProgressManager(ProgressId, ProgressActivity, $"Processing with {ThrottleLimit} workers", ParentProgressId);
 				m_input = new List<PSObject>(500);
 			}	
 		}
@@ -126,7 +126,7 @@ namespace PSParallel
 		{	
 			if(NoProgress)
 			{					
-				m_powershellPool.AddInput(Process, InputObject);			
+				m_powershellPool.AddInput(ScriptBlock, InputObject);			
 				WriteOutputs();
 			}
 			else
@@ -146,7 +146,7 @@ namespace PSParallel
 					{
 						var pr = m_progressManager.GetCurrentProgressRecord(i.ToString());
 						WriteProgress(pr);
-						m_powershellPool.AddInput(Process, i);
+						m_powershellPool.AddInput(ScriptBlock, i);
 						WriteOutputs();
 					}
 				}

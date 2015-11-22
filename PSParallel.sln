@@ -3,9 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PSParallel", "src\PSParallell\PSParallel.csproj", "{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PSParallelTests", "src\PSParallelTests\PSParallelTests.csproj", "{8E181CAF-1652-46A4-82B0-D6750EE25E53}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EAD67DAE-040F-4EFD-920F-FCC2AA2B72F7}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{74BE50DD-3285-457C-80D9-5F90897E15F3}"
+	ProjectSection(SolutionItems) = preProject
+		scripts\Install.ps1 = scripts\Install.ps1
+		module\PSParallel.psd1 = module\PSParallel.psd1
+		scripts\Publish-ToGallery.ps1 = scripts\Publish-ToGallery.ps1
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PSParallel", "src\PSParallel\PSParallel.csproj", "{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "module", "module", "{9C879DF2-D1E2-4143-A95A-2374F8650F48}"
+	ProjectSection(SolutionItems) = preProject
+		module\en-US\about_PSParallel.Help.txt = module\en-US\about_PSParallel.Help.txt
+		module\PSParallel.psd1 = module\PSParallel.psd1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,16 +31,20 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8E181CAF-1652-46A4-82B0-D6750EE25E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8E181CAF-1652-46A4-82B0-D6750EE25E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E181CAF-1652-46A4-82B0-D6750EE25E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E181CAF-1652-46A4-82B0-D6750EE25E53}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D660B110-98CC-456A-B0A2-ED1C3BE9A25A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{74BE50DD-3285-457C-80D9-5F90897E15F3} = {EAD67DAE-040F-4EFD-920F-FCC2AA2B72F7}
+		{9C879DF2-D1E2-4143-A95A-2374F8650F48} = {EAD67DAE-040F-4EFD-920F-FCC2AA2B72F7}
 	EndGlobalSection
 EndGlobal
