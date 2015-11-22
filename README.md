@@ -36,3 +36,4 @@ Pull requests and/or suggestions are more than welcome.
 
 ###Acknowlegementes
 The idea and the basis for the implementation comes from [RamblingCookieMonster](https://github.com/RamblingCookieMonster).
+Cudos for that implementation also goes to Boe Prox(@proxb) and Sergei Vorobev(@xvorsx).
