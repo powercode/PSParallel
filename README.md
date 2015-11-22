@@ -29,6 +29,7 @@ Get-ChildItem -recurce *.dmp | Invoke-Parallel -ThrottleLimit 32 -ProgressActivi
 
 The overhead of spinning up new PowerShell classes is non-zero. Invoke-Parallel is useful when you have items with high latency or that is long running.
 
+![image](https://github.com/powercode/PSParallel/raw/master/images/Invoke-Parallel.png)
 
 ##Contributions
 Pull requests and/or suggestions are more than welcome.
