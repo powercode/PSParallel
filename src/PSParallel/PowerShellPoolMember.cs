@@ -20,7 +20,7 @@ namespace PSParallel
 			m_pool = pool;
 			m_poolStreams = m_pool.Streams;
 			m_input.Complete();
-			CreatePowerShell();			
+			CreatePowerShell();
 		}
 
 		private void PowerShellOnInvocationStateChanged(object sender, PSInvocationStateChangedEventArgs psInvocationStateChangedEventArgs)
@@ -30,11 +30,11 @@ namespace PSParallel
 
 				case PSInvocationState.Stopped:
 				case PSInvocationState.Completed:
-				case PSInvocationState.Failed:					
+				case PSInvocationState.Failed:
 					ReturnPowerShell(m_powerShell);
 					m_pool.ReportCompletion();
-					CreatePowerShell();		
-													
+					CreatePowerShell();
+
 					break;
 			}
 		}
@@ -43,7 +43,7 @@ namespace PSParallel
 		{
 			var powerShell = PowerShell.Create();
 			HookStreamEvents(powerShell.Streams);
-			powerShell.InvocationStateChanged += PowerShellOnInvocationStateChanged;			
+			powerShell.InvocationStateChanged += PowerShellOnInvocationStateChanged;
 			m_powerShell = powerShell;
 			m_output = new PSDataCollection<PSObject>();
 			m_output.DataAdded += OutputOnDataAdded;
@@ -54,13 +54,13 @@ namespace PSParallel
 		{
 			UnhookStreamEvents(powershell.Streams);
 			powershell.InvocationStateChanged -= PowerShellOnInvocationStateChanged;
-			m_output.DataAdded -= OutputOnDataAdded;			
+			m_output.DataAdded -= OutputOnDataAdded;
 			powershell.Dispose();
 		}
 
 
 		private void HookStreamEvents(PSDataStreams streams)
-		{			
+		{
 			streams.Debug.DataAdded += DebugOnDataAdded;
 			streams.Error.DataAdded += ErrorOnDataAdded;
 			streams.Progress.DataAdded += ProgressOnDataAdded;
@@ -80,7 +80,7 @@ namespace PSParallel
 			streams.Debug.DataAdded -= DebugOnDataAdded;
 		}
 
-		
+
 		public void BeginInvoke(ScriptBlock scriptblock, PSObject inputObject)
 		{
 			string command = $"param($_,$PSItem){scriptblock}";
@@ -93,7 +93,7 @@ namespace PSParallel
 		public void Dispose()
 		{
 			m_resetEvent.Set();
-			m_resetEvent.Dispose();			
+			m_resetEvent.Dispose();
 			if (m_powerShell != null)
 			{
 				UnhookStreamEvents(m_powerShell.Streams);
@@ -103,7 +103,7 @@ namespace PSParallel
 		}
 
 		private void OutputOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
-		{			
+		{
 			var item = ((PSDataCollection<PSObject>)sender)[dataAddedEventArgs.Index];
 			m_poolStreams.Output.Add(item);
 		}

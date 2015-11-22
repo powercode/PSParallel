@@ -15,19 +15,19 @@ namespace PSParallelTests
 		public InvokeParallelTests()
 		{
 			var path = Path.GetDirectoryName(typeof(InvokeParallelTests).Assembly.Location);
-			var iss = InitialSessionState.CreateDefault2();			
+			var iss = InitialSessionState.CreateDefault2();
 			iss.ImportPSModule(new [] { $"{path}\\PSParallel.dll" });
-             m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
+			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
 			m_runspacePool.SetMaxRunspaces(10);
-			m_runspacePool.Open();			
+			m_runspacePool.Open();
 		}
 		[TestMethod]
 		public void TestOutput()
-		{			
+		{
 			PowerShell ps = PowerShell.Create();
 			ps.RunspacePool = m_runspacePool;
 
-			ps.AddCommand("Invoke-Parallel")				
+			ps.AddCommand("Invoke-Parallel")
 				.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
 				.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> {1,2,3,4,5};
@@ -45,7 +45,7 @@ namespace PSParallelTests
 
 			ps.AddCommand("Invoke-Parallel")
 				.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
-				.AddParameter("ThrottleLimit", 10);							
+				.AddParameter("ThrottleLimit", 10);
 			var input = new PSDataCollection<int>(Enumerable.Range(1,1000));
 			input.Complete();
 			var output = ps.Invoke<int>(input);
@@ -57,18 +57,18 @@ namespace PSParallelTests
 		public void TestVerboseOutput()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;					
+			ps.RunspacePool = m_runspacePool;
 			ps.AddScript("$VerbosePreference='Continue'", false).Invoke();
-			ps.Commands.Clear();			
+			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel",false)
 					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
-			ps.Invoke<int>(input);			
-			Assert.IsFalse(ps.HadErrors, "We don't expect errors here");			
-			var vrb = ps.Streams.Verbose.ReadAll();			
+			ps.Invoke<int>(input);
+			Assert.IsFalse(ps.HadErrors, "We don't expect errors here");
+			var vrb = ps.Streams.Verbose.ReadAll();
 			Assert.IsTrue(vrb.Any(v=> v.Message == "1"), "Some verbose message should be '1'");
 		}
 
@@ -76,7 +76,7 @@ namespace PSParallelTests
 		public void TestNoVerboseOutputWithoutPreference()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;			
+			ps.RunspacePool = m_runspacePool;
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
 					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
@@ -93,7 +93,7 @@ namespace PSParallelTests
 		public void TestDebugOutput()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;			
+			ps.RunspacePool = m_runspacePool;
 			ps.AddScript("$DebugPreference='Continue'", false).Invoke();
 			ps.Commands.Clear();
 			ps.AddStatement()
@@ -112,7 +112,7 @@ namespace PSParallelTests
 		public void TestNoDebugOutputWithoutPreference()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;			
+			ps.RunspacePool = m_runspacePool;
 			ps.Commands.Clear();
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
@@ -120,7 +120,7 @@ namespace PSParallelTests
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
-			ps.Invoke<int>(input);			
+			ps.Invoke<int>(input);
 			var dbg = ps.Streams.Debug.ReadAll();
 			Assert.IsFalse(dbg.Any(d => d.Message == "1"), "No debug message should be '1'");
 		}
@@ -138,7 +138,7 @@ namespace PSParallelTests
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
-			ps.Invoke<int>(input);			
+			ps.Invoke<int>(input);
 			var wrn = ps.Streams.Warning.ReadAll();
 			Assert.IsTrue(wrn.Any(w => w.Message == "1"), "Some warning message should be '1'");
 		}
@@ -156,7 +156,7 @@ namespace PSParallelTests
 					.AddParameter("ThrottleLimit", 1);
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
-			ps.Invoke<int>(input);			
+			ps.Invoke<int>(input);
 			var wrn = ps.Streams.Warning.ReadAll();
 			Assert.IsFalse(wrn.Any(w => w.Message == "1"), "No warning message should be '1'");
 		}
@@ -210,8 +210,8 @@ namespace PSParallelTests
 				.AddParameter("ScriptBlock", ScriptBlock.Create("$x -eq 10"))
 				.AddParameter("ThrottleLimit", 1)
 				.AddParameter("InputObject", 1);
-						
-			var result = ps.Invoke<bool>().First();			
+
+			var result = ps.Invoke<bool>().First();
 			Assert.IsTrue(result);
 		}
 
@@ -226,7 +226,7 @@ namespace PSParallelTests
 				.AddCommand("Invoke-Parallel", false)
 				.AddParameter("ScriptBlock", ScriptBlock.Create("$y = $x * 5; $y"))
 				.AddParameter("ThrottleLimit", 1)
-				.AddParameter("InputObject", 1);	
+				.AddParameter("InputObject", 1);
 
 			var result = ps.Invoke<int>().First();
 			Assert.AreEqual(50, result);
@@ -241,12 +241,12 @@ namespace PSParallelTests
 			ps.AddStatement()
 				.AddCommand("Invoke-Parallel", false)
 				.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
-				.AddParameter("ThrottleLimit", 1);				
+				.AddParameter("ThrottleLimit", 1);
 
 			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
 			input.Complete();
 			ps.Invoke(input);
-			var progress = ps.Streams.Progress.ReadAll();			
+			var progress = ps.Streams.Progress.ReadAll();
 			Assert.AreEqual(11, progress.Count(pr=>pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
 		}
 

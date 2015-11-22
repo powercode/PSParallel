@@ -24,7 +24,7 @@ namespace PSParallel
 			string command = $"param($_,$PSItem){m_process}";
 			m_powershell.AddScript(command)
 				.AddParameter("_", inputObject)
-				.AddParameter("PSItem", inputObject);				
+				.AddParameter("PSItem", inputObject);
 			m_asyncResult = m_powershell.BeginInvoke();
 		}
 

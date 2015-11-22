@@ -12,7 +12,7 @@ namespace PSParallel
 		private int m_busyCount;
 		private readonly int m_poolSize;
 		private readonly CancellationToken m_cancellationToken;
-		private readonly WaitHandle[] m_powerShellAndCancelWaitHandles;		
+		private readonly WaitHandle[] m_powerShellAndCancelWaitHandles;
 		private readonly RunspacePool m_runspacePool;
 		private readonly List<PowerShellPoolMember> m_poolMembers;
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
@@ -21,23 +21,23 @@ namespace PSParallel
 		{
 			m_poolMembers= new List<PowerShellPoolMember>(poolSize);
 			m_poolSize = poolSize;
-			m_cancellationToken = cancellationToken;			
+			m_cancellationToken = cancellationToken;
 			m_powerShellAndCancelWaitHandles = new WaitHandle[poolSize + 1];
 			for (int i = 0; i < poolSize; i++)
 			{
 				var powerShellPoolMember = new PowerShellPoolMember(this);
 				m_poolMembers.Add(powerShellPoolMember);
-				m_powerShellAndCancelWaitHandles[i] = powerShellPoolMember.WaitHandle;				
+				m_powerShellAndCancelWaitHandles[i] = powerShellPoolMember.WaitHandle;
 			}
 			m_powerShellAndCancelWaitHandles[poolSize] = cancellationToken.WaitHandle;
-			
+
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(initialSessionState);
 			m_runspacePool.SetMaxRunspaces(poolSize);
 		}
 
 		public void AddInput(ScriptBlock scriptblock,PSObject inputObject)
 		{
-			var powerShell = WaitForAvailablePowershell();						
+			var powerShell = WaitForAvailablePowershell();
 			powerShell.BeginInvoke(scriptblock, inputObject);
 			Interlocked.Increment(ref m_busyCount);
 		}
@@ -48,7 +48,7 @@ namespace PSParallel
 		}
 
 		public bool WaitForAllPowershellCompleted(int timeoutMilliseconds)
-		{			
+		{
 			Contract.Requires(timeoutMilliseconds >=0);
 			var startTicks = Environment.TickCount;
 			var currendTicks = startTicks;
@@ -62,7 +62,7 @@ namespace PSParallel
 				if (Interlocked.CompareExchange(ref m_busyCount, 0, 0) == 0)
 				{
 					return true;
-				} 
+				}
 				Thread.Sleep(10);
 
 			}
@@ -70,7 +70,7 @@ namespace PSParallel
 		}
 
 		private PowerShellPoolMember WaitForAvailablePowershell()
-		{			
+		{
 			var index = WaitHandle.WaitAny(m_powerShellAndCancelWaitHandles);
 			if (index == m_poolSize)
 			{
@@ -80,8 +80,8 @@ namespace PSParallel
 			var ps = poolmember.PowerShell;
 			ps.RunspacePool = m_runspacePool;
 			return poolmember;
-		}		
-		
+		}
+
 
 		public void Dispose()
 		{

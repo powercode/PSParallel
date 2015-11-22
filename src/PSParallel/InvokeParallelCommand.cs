@@ -7,10 +7,10 @@ using System.Threading;
 namespace PSParallel
 {
 	[Alias("ipa")]
-	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]	
+	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
 	public class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
-		[Parameter(Mandatory = true, Position = 0)]		
+		[Parameter(Mandatory = true, Position = 0)]
 		public ScriptBlock ScriptBlock { get; set; }
 
 		[Alias("ppi")]
@@ -24,26 +24,26 @@ namespace PSParallel
 		[Alias("pa")]
 		[Parameter(ParameterSetName = "Progress")]
 		[ValidateNotNullOrEmpty]
-		public string ProgressActivity { get; set; } = "Invoke-Parallel";		
+		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
 		[Parameter]
-		[ValidateRange(1,128)]
-	    public int ThrottleLimit { get; set; } = 32;
-				
+		[ValidateRange(1,63)]
+		public int ThrottleLimit { get; set; } = 32;
+
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
 
 		[Parameter(ParameterSetName = "NoProgress")]
 		public SwitchParameter NoProgress { get; set; }
-		
-		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();		
+
+		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
 		private PowershellPool m_powershellPool;
 		private InitialSessionState m_initialSessionState;
 		private ProgressManager m_progressManager;
-		
+
 		// this is only used when NoProgress is not specified
 		// Input is then captured in ProcessRecored and processed in EndProcessing
-		private List<PSObject> m_input; 
+		private List<PSObject> m_input;
 
 
 		private static InitialSessionState GetSessionState(ScriptBlock scriptBlock, SessionState sessionState)
@@ -105,16 +105,16 @@ namespace PSParallel
 			{
 				m_progressManager = new ProgressManager(ProgressId, ProgressActivity, $"Processing with {ThrottleLimit} workers", ParentProgressId);
 				m_input = new List<PSObject>(500);
-			}	
+			}
 		}
 
 
 
 		protected override void ProcessRecord()
-		{	
+		{
 			if(NoProgress)
-			{					
-				m_powershellPool.AddInput(ScriptBlock, InputObject);			
+			{
+				m_powershellPool.AddInput(ScriptBlock, InputObject);
 				WriteOutputs();
 			}
 			else
@@ -141,11 +141,11 @@ namespace PSParallel
 				while(!m_powershellPool.WaitForAllPowershellCompleted(100))
 				{
 					if (Stopping)
-					{					
+					{
 						return;
-					}				
+					}
 					WriteOutputs();
-				}			
+				}
 				WriteOutputs();
 			}
 			finally
@@ -156,11 +156,11 @@ namespace PSParallel
 				}
 			}
 		}
-				
+
 
 		protected override void StopProcessing()
-		{	
-			m_cancelationTokenSource.Cancel();								
+		{
+			m_cancelationTokenSource.Cancel();
 		}
 
 		private void WriteOutputs()
@@ -202,9 +202,9 @@ namespace PSParallel
 		}
 
 		public void Dispose()
-		{						
+		{
 			m_powershellPool.Dispose();
 		}
-		
+
 	}
 }
