@@ -128,7 +128,7 @@ namespace PSParallel
 					m_progressManager.TotalCount = m_input.Count;
 					foreach (var i in m_input)
 					{
-						var pr = m_progressManager.GetCurrentProgressRecord(i.ToString(), m_powershellPool.ProcessedCount);
+						var pr = m_progressManager.GetCurrentProgressRecord($"Starting processing of {i}", m_powershellPool.ProcessedCount);
 						WriteProgress(pr);
 						m_powershellPool.AddInput(ScriptBlock, i);
 						WriteOutputs();
@@ -136,6 +136,8 @@ namespace PSParallel
 				}
 				while(!m_powershellPool.WaitForAllPowershellCompleted(100))
 				{
+					var pr = m_progressManager.GetCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", m_powershellPool.ProcessedCount);
+					WriteProgress(pr);
 					if (Stopping)
 					{
 						return;
