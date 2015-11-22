@@ -45,7 +45,6 @@ namespace PSParallel
 		// Input is then captured in ProcessRecored and processed in EndProcessing
 		private List<PSObject> m_input;
 
-
 		private static InitialSessionState GetSessionState(ScriptBlock scriptBlock, SessionState sessionState)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
@@ -108,8 +107,6 @@ namespace PSParallel
 			}
 		}
 
-
-
 		protected override void ProcessRecord()
 		{
 			if(NoProgress)
@@ -122,7 +119,6 @@ namespace PSParallel
 				m_input.Add(InputObject);
 			}
 		}
-
 
 		protected override void EndProcessing()
 		{
@@ -156,7 +152,6 @@ namespace PSParallel
 				}
 			}
 		}
-
 
 		protected override void StopProcessing()
 		{
