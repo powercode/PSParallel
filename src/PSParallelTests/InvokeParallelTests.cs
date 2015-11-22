@@ -3,7 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using Microsoft.PowerShell.Commands;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using PSParallel;
 
 namespace PSParallelTests
 {
@@ -13,10 +15,19 @@ namespace PSParallelTests
 		readonly RunspacePool m_runspacePool;
 
 		public InvokeParallelTests()
-		{
-			var path = Path.GetDirectoryName(typeof(InvokeParallelTests).Assembly.Location);
-			var iss = InitialSessionState.CreateDefault2();
-			iss.ImportPSModule(new [] { $"{path}\\PSParallel.dll" });
+		{						
+			var iss = InitialSessionState.Create();
+			iss.LanguageMode = PSLanguageMode.FullLanguage;						
+			iss.Commands.Add(new []
+			{
+				new SessionStateCmdletEntry("Write-Error",		typeof(WriteErrorCommand), null),
+				new SessionStateCmdletEntry("Write-Verbose",	typeof(WriteVerboseCommand), null),
+				new SessionStateCmdletEntry("Write-Debug",		typeof(WriteDebugCommand), null),
+				new SessionStateCmdletEntry("Write-Progress",	typeof(WriteProgressCommand), null),
+				new SessionStateCmdletEntry("Write-Warning",	typeof(WriteWarningCommand), null),
+				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
+				new SessionStateCmdletEntry("Invoke-Parallel",	typeof(InvokeParallelCommand), null), 
+			});			
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
 			m_runspacePool.SetMaxRunspaces(10);
 			m_runspacePool.Open();
