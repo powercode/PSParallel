@@ -13,7 +13,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{74BE50DD-3285-457C-80D9-5F90897E15F3}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\Install.ps1 = scripts\Install.ps1
-		module\PSParallel.psd1 = module\PSParallel.psd1
 		scripts\Publish-ToGallery.ps1 = scripts\Publish-ToGallery.ps1
 	EndProjectSection
 EndProject
