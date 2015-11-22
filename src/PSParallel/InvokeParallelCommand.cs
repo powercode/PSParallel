@@ -7,18 +7,16 @@ using System.Threading;
 namespace PSParallel
 {
 	[Alias("ipa")]
-	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
-	// ReSharper disable once UnusedMember.Global
+	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]	
 	public class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
-		[Parameter(Mandatory = true, Position = 0)]
-		// ReSharper disable once MemberCanBePrivate.Global
-		// ReSharper disable once UnusedAutoPropertyAccessor.Global
+		[Parameter(Mandatory = true, Position = 0)]		
 		public ScriptBlock ScriptBlock { get; set; }
 
 		[Alias("ppi")]
 		[Parameter(ParameterSetName = "Progress")]
 		public int ParentProgressId { get; set; } = -1;
+
 		[Alias("pi")]
 		[Parameter(ParameterSetName = "Progress")]
 		public int ProgressId { get; set; } = 1000;
@@ -28,17 +26,11 @@ namespace PSParallel
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";		
 
-		[Parameter()]
-		[ValidateRange(1,48)]
-		// ReSharper disable once MemberCanBePrivate.Global
-		// ReSharper disable once AutoPropertyCanBeMadeGetOnly.Global
-        public int ThrottleLimit { get; set; } = 10;
-		
-		
+		[Parameter]
+		[ValidateRange(1,128)]
+	    public int ThrottleLimit { get; set; } = 32;
+				
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
-		// ReSharper disable once MemberCanBePrivate.Global
-		// ReSharper disable once AutoPropertyCanBeMadeGetOnly.Global
-		// ReSharper disable once UnusedAutoPropertyAccessor.Global
 		public PSObject InputObject { get; set; }
 
 		[Parameter(ParameterSetName = "NoProgress")]
@@ -57,27 +49,24 @@ namespace PSParallel
 		private static InitialSessionState GetSessionState(ScriptBlock scriptBlock, SessionState sessionState)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
-			var variables = scriptBlock.Ast.FindAll(ast =>
-			{
-				var v  = ast as VariableExpressionAst;
-				if (v == null) return false;
-				var assignment = v.Parent as AssignmentStatementAst;
-				if (assignment != null && ReferenceEquals(assignment.Left,v))
-				{
-					return false;
-				}
-				return true;
-			}, true);
+
+			CaptureVariables(scriptBlock, sessionState, initialSessionState);
+			return initialSessionState;
+		}
+
+		private static void CaptureVariables(ScriptBlock scriptBlock, SessionState sessionState,
+			InitialSessionState initialSessionState)
+		{
+			var variables = scriptBlock.Ast.FindAll(ast => ast is VariableExpressionAst, true);
 			var varDict = new Dictionary<string, SessionStateVariableEntry>();
 			foreach (var ast in variables)
 			{
-				var v = (VariableExpressionAst)ast;
+				var v = (VariableExpressionAst) ast;
 				var variableName = v.VariablePath.UserPath;
 				if (variableName == "_" || varDict.ContainsKey(variableName))
 				{
 					continue;
 				}
-
 
 				var variable = sessionState.PSVariable.Get(variableName);
 				if (variable != null)
@@ -95,17 +84,16 @@ namespace PSParallel
 			};
 			foreach (var pref in prefs)
 			{
-				var v= sessionState.PSVariable.Get(pref);
+				var v = sessionState.PSVariable.Get(pref);
 				if (v != null)
 				{
 					var ssve = new SessionStateVariableEntry(v.Name, v.Value,
 						v.Description, v.Options, v.Attributes);
 					varDict.Add(v.Name, ssve);
 				}
-			}			
+			}
 
-			initialSessionState.Variables.Add(varDict.Values);			
-			return initialSessionState;
+			initialSessionState.Variables.Add(varDict.Values);
 		}
 
 		protected override void BeginProcessing()
