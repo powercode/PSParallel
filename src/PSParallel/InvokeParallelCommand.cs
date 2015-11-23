@@ -31,6 +31,10 @@ namespace PSParallel
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
 		[Parameter]
+		[ValidateNotNull]
+		public InitialSessionState InitialSessionState { get; set; }
+
+		[Parameter]
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
@@ -110,7 +114,7 @@ namespace PSParallel
 
 		protected override void BeginProcessing()
 		{
-			m_initialSessionState = GetSessionState(SessionState);
+			m_initialSessionState = InitialSessionState ?? GetSessionState(SessionState);
 			m_powershellPool = new PowershellPool(ThrottleLimit,m_initialSessionState, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
