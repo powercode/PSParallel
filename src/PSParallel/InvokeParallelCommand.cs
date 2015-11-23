@@ -65,9 +65,17 @@ namespace PSParallel
 
 		private static IDictionary<string, FunctionInfo> GetFunctions(SessionState sessionState)
 		{
-			var baseObject = (Dictionary<string,FunctionInfo>.ValueCollection) sessionState.InvokeProvider.Item.Get("function:")[0].BaseObject;
-			return baseObject.ToDictionary(f=>f.Name);
-		}
+			try
+			{			
+				var functionDrive = sessionState.InvokeProvider.Item.Get("function:");
+				var baseObject = (Dictionary<string, FunctionInfo>.ValueCollection) functionDrive[0].BaseObject;
+				return baseObject.ToDictionary(f => f.Name);
+			}
+			catch (DriveNotFoundException)
+			{
+				return new Dictionary<string, FunctionInfo>();
+			}
+        }
 
 		private static void CaptureFunctions(ScriptBlock scriptBlock, InitialSessionState initialSessionState, 
 			IDictionary<string, FunctionInfo> functions, ISet<string> processedFunctions)
