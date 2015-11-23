@@ -17,7 +17,7 @@ namespace PSParallelTests
 		public InvokeParallelTests()
 		{						
 			var iss = InitialSessionState.Create();
-			iss.LanguageMode = PSLanguageMode.FullLanguage;						
+			iss.LanguageMode = PSLanguageMode.FullLanguage;
 			iss.Commands.Add(new []
 			{
 				new SessionStateCmdletEntry("Write-Error",		typeof(WriteErrorCommand), null),
@@ -27,7 +27,7 @@ namespace PSParallelTests
 				new SessionStateCmdletEntry("Write-Warning",	typeof(WriteWarningCommand), null),
 				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
 				new SessionStateCmdletEntry("Invoke-Parallel",	typeof(InvokeParallelCommand), null), 
-			});			
+			});
 			iss.Providers.Add(new SessionStateProviderEntry("function", typeof(FunctionProvider), null));
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
 			m_runspacePool.SetMaxRunspaces(10);
@@ -288,7 +288,7 @@ namespace PSParallelTests
 		public void TestFunctionCaptureOutput()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;			
+			ps.RunspacePool = m_runspacePool;
 			ps.AddScript(@"
 function foo($x) {return $x * 2}
 ", false);
@@ -312,7 +312,7 @@ function foo($x) {return $x * 2}
 		public void TestRecursiveFunctionCaptureOutput()
 		{
 			PowerShell ps = PowerShell.Create();
-			ps.RunspacePool = m_runspacePool;			
+			ps.RunspacePool = m_runspacePool;
 			ps.AddScript(@"
 function foo($x) {return 2 * $x}
 function bar($x) {return 3 * (foo $x)}
