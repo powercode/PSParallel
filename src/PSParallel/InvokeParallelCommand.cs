@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Language;
 using System.Management.Automation.Runspaces;
 using System.Threading;
+
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+// ReSharper disable MemberCanBePrivate.Global
 namespace PSParallel
 {
 	[Alias("ipa")]
@@ -50,8 +55,49 @@ namespace PSParallel
 			var initialSessionState = InitialSessionState.CreateDefault2();
 
 			CaptureVariables(scriptBlock, sessionState, initialSessionState);
+			// this will get invoked recursively
+
+			var functions = GetFunctions(sessionState);
+			CaptureFunctions(scriptBlock, initialSessionState, functions, new HashSet<string>());
 			return initialSessionState;
 		}
+
+		private static IDictionary<string, FunctionInfo> GetFunctions(SessionState sessionState)
+		{
+			try
+			{
+				var functionDrive = sessionState.InvokeProvider.Item.Get("function:");
+				var baseObject = (Dictionary<string, FunctionInfo>.ValueCollection) functionDrive[0].BaseObject;
+				return baseObject.ToDictionary(f => f.Name);
+			}
+			catch (DriveNotFoundException)
+			{
+				return new Dictionary<string, FunctionInfo>();
+			}
+		}
+
+		private static void CaptureFunctions(ScriptBlock scriptBlock, InitialSessionState initialSessionState, 
+			IDictionary<string, FunctionInfo> functions, ISet<string> processedFunctions)
+		{
+			var commands = scriptBlock.Ast.FindAll(ast => ast is CommandAst, true);
+
+			var nonProcessedCommandNames = commands.Cast<CommandAst>()
+					.Select(commandAst => commandAst.CommandElements[0].Extent.Text)
+					.Where(commandName => !processedFunctions.Contains(commandName));
+			foreach (var commandName in nonProcessedCommandNames)
+			{
+
+				FunctionInfo functionInfo;
+				if (!functions.TryGetValue(commandName, out functionInfo))
+				{
+					continue;
+				}
+				initialSessionState.Commands.Add(new SessionStateFunctionEntry(functionInfo.Name, functionInfo.Definition));
+				processedFunctions.Add(commandName);
+				CaptureFunctions(functionInfo.ScriptBlock, initialSessionState, functions, processedFunctions);
+			}
+		}
+
 
 		private static void CaptureVariables(ScriptBlock scriptBlock, SessionState sessionState,
 			InitialSessionState initialSessionState)

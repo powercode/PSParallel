@@ -17,7 +17,7 @@ namespace PSParallelTests
 		public InvokeParallelTests()
 		{						
 			var iss = InitialSessionState.Create();
-			iss.LanguageMode = PSLanguageMode.FullLanguage;						
+			iss.LanguageMode = PSLanguageMode.FullLanguage;
 			iss.Commands.Add(new []
 			{
 				new SessionStateCmdletEntry("Write-Error",		typeof(WriteErrorCommand), null),
@@ -27,7 +27,8 @@ namespace PSParallelTests
 				new SessionStateCmdletEntry("Write-Warning",	typeof(WriteWarningCommand), null),
 				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
 				new SessionStateCmdletEntry("Invoke-Parallel",	typeof(InvokeParallelCommand), null), 
-			});			
+			});
+			iss.Providers.Add(new SessionStateProviderEntry("function", typeof(FunctionProvider), null));
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
 			m_runspacePool.SetMaxRunspaces(10);
 			m_runspacePool.Open();
@@ -283,6 +284,52 @@ namespace PSParallelTests
 		}
 
 
+		[TestMethod]
+		public void TestFunctionCaptureOutput()
+		{
+			PowerShell ps = PowerShell.Create();
+			ps.RunspacePool = m_runspacePool;
+			ps.AddScript(@"
+function foo($x) {return $x * 2}
+", false);
+
+			ps.AddStatement()
+				.AddCommand("Invoke-Parallel", false)
+				.AddParameter("ScriptBlock", ScriptBlock.Create("foo $_"))
+				.AddParameter("ThrottleLimit", 1)
+				.AddParameter("NoProgress");
+
+			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
+			input.Complete();
+			var output = ps.Invoke<int>(input);
+			var sum = output.Aggregate(0, (a, b) => a + b);
+			Assert.AreEqual(30, sum);
+		}
+
+
+
+		[TestMethod]
+		public void TestRecursiveFunctionCaptureOutput()
+		{
+			PowerShell ps = PowerShell.Create();
+			ps.RunspacePool = m_runspacePool;
+			ps.AddScript(@"
+function foo($x) {return 2 * $x}
+function bar($x) {return 3 * (foo $x)}
+", false);
+
+			ps.AddStatement()
+				.AddCommand("Invoke-Parallel", false)
+				.AddParameter("ScriptBlock", ScriptBlock.Create("bar $_"))
+				.AddParameter("ThrottleLimit", 1)
+				.AddParameter("NoProgress");
+
+			var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
+			input.Complete();
+			var output = ps.Invoke<int>(input);
+			var sum = output.Aggregate(0, (a, b) => a + b);
+			Assert.AreEqual(90, sum);
+		}
 
 		public void Dispose()
 		{
