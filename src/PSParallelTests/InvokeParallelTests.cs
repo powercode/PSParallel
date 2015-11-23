@@ -28,7 +28,12 @@ namespace PSParallelTests
 				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
 				new SessionStateCmdletEntry("Invoke-Parallel",	typeof(InvokeParallelCommand), null), 
 			});
-			iss.Providers.Add(new SessionStateProviderEntry("function", typeof(FunctionProvider), null));
+			iss.Providers.Add(new SessionStateProviderEntry("Function", typeof(FunctionProvider), null));
+			iss.Providers.Add(new SessionStateProviderEntry("Variable", typeof(VariableProvider), null));
+			iss.Variables.Add(new []
+			{
+				new SessionStateVariableEntry("ErrorActionPreference", ActionPreference.Continue, "Dictates the action taken when an error message is delivered"), 
+			});
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
 			m_runspacePool.SetMaxRunspaces(10);
 			m_runspacePool.Open();
