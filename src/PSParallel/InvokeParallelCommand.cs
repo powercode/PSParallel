@@ -139,7 +139,8 @@ namespace PSParallel
 
 		protected override void EndProcessing()
 		{
-			try {
+			try 
+			{ 
 				if (!NoProgress)
 				{
 					m_progressManager.TotalCount = m_input.Count;

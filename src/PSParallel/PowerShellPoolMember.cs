@@ -29,10 +29,16 @@ namespace PSParallel
 				case PSInvocationState.Stopped:
 				case PSInvocationState.Completed:
 				case PSInvocationState.Failed:
-					ReturnPowerShell(m_powerShell);
-					CreatePowerShell();
+					var ps = m_powerShell;
+					if(ps != null)
+					{ 
+						lock(ps) { 
+							ReturnPowerShell(ps);
+							m_powerShell = null;												
+						}
+						CreatePowerShell();
+					}
 					m_pool.ReportCompletion(this);
-
 					break;
 			}
 		}
@@ -52,7 +58,7 @@ namespace PSParallel
 			UnhookStreamEvents(powershell.Streams);
 			powershell.InvocationStateChanged -= PowerShellOnInvocationStateChanged;
 			m_output.DataAdded -= OutputOnDataAdded;
-			powershell.Dispose();
+			powershell.Dispose();			;
 		}
 
 
@@ -89,13 +95,14 @@ namespace PSParallel
 
 		public void Dispose()
 		{
-			if (m_powerShell != null)
+			var ps = m_powerShell;
+			if (ps != null)
 			{
-				UnhookStreamEvents(m_powerShell.Streams);
+				UnhookStreamEvents(ps.Streams);
+				ps.Dispose();
 			}
 			m_output.Dispose();
 			m_input.Dispose();
-			m_powerShell?.Dispose();
 		}
 
 		private void OutputOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
@@ -139,6 +146,26 @@ namespace PSParallel
 		{
 			var record = ((PSDataCollection<VerboseRecord>)sender)[dataAddedEventArgs.Index];
 			m_poolStreams.Verbose.Add(record);
+		}
+
+		public void Stop()
+		{
+			m_powerShell?.BeginStop(OnStopped, this);
+		}
+
+		private void OnStopped(IAsyncResult ar)
+		{
+			var poolMember = (PowerShellPoolMember)ar.AsyncState;
+			var ps = poolMember.PowerShell;
+			if (ps == null)
+			{
+				return;
+			}
+			lock (ps)
+			{
+				ps.EndStop(ar);
+				poolMember.m_powerShell = null;
+			}
 		}
 	}
 }

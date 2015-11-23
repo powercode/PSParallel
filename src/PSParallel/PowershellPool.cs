@@ -39,10 +39,16 @@ namespace PSParallel
 
 		public void AddInput(ScriptBlock scriptblock,PSObject inputObject)
 		{
-			var powerShell = WaitForAvailablePowershell();
-			powerShell.BeginInvoke(scriptblock, inputObject);
-			Interlocked.Increment(ref m_busyCount);
-		}
+			try { 
+				var powerShell = WaitForAvailablePowershell();		
+				powerShell.BeginInvoke(scriptblock, inputObject);
+				Interlocked.Increment(ref m_busyCount);
+			}
+			catch(OperationCanceledException)
+			{
+				Stop();
+			}
+        }
 
 		public void Open()
 		{
@@ -93,7 +99,18 @@ namespace PSParallel
 		{
 			Interlocked.Decrement(ref m_busyCount);
 			Interlocked.Increment(ref m_processedCount);
-			m_availablePoolMembers.Add(poolmember);
+			if(poolmember.PowerShell != null)
+			{ 
+				m_availablePoolMembers.Add(poolmember);
+			}
+		}
+
+		private void Stop()
+		{
+			foreach (var poolMember in m_availablePoolMembers.GetConsumingEnumerable())
+			{
+				poolMember.Stop();
+			}
 		}
 	}
 }
