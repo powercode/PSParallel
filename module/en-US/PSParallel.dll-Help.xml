@@ -247,9 +247,10 @@
 				<maml:introduction>
 					<maml:para>PS C:\&gt;</maml:para>
 				</maml:introduction>
-				<dev:code>1..256 | Invoke-Parallel {$ip = 192.168.0.$_; $res = ping.exe -v4 -w20 $ip; [PSCustomObject] @{IP=$ip;Res=$res}}</dev:code>
+				<dev:code>(1..255).ForEach{&quot;192.168.0.$_&quot;} | Invoke-Parallel {$ip = $_; $res = ping.exe -4 -w 20 $_; [PSCustomObject] @{IP=$ip;Res=$res}} -ThrottleLimit 64</dev:code>
 				<dev:remarks>
 					<maml:para>
+						This example pings all iP v4 addresses on a subnet, specifying Throttlelimit to 64, i.e. running up to 64 runspaces in parallel.
 					</maml:para>
 				</dev:remarks>
 			</command:example>
