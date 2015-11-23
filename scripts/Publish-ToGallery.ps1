@@ -4,7 +4,7 @@ $p = @{
     LicenseUri = "https://github.com/powercode/PSParallel/blob/master/LICENSE"
 	IconUri = "https://github.com/powercode/PSParallel/blob/master/images/PSParallel_icon.png"
     Tag = "Parallel","Runspace","Invoke","Foreach"
-    ReleaseNote = "Capturing functions"
+    ReleaseNote = "Adding InitialSessionState parameter. More robust function capture"
     ProjectUri = "https://github.com/powercode/PSParallel"
 }
 

@@ -29,14 +29,14 @@ namespace PSParallel
 		[Parameter(ParameterSetName = "Progress")]
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
+		
+		[Parameter]
+		[ValidateRange(1,128)]
+		public int ThrottleLimit { get; set; } = 32;
 
 		[Parameter]
 		[ValidateNotNull]
 		public InitialSessionState InitialSessionState { get; set; }
-
-		[Parameter]
-		[ValidateRange(1,128)]
-		public int ThrottleLimit { get; set; } = 32;
 
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
