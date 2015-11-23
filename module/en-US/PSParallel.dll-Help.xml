@@ -73,6 +73,18 @@
 					<command:parameterValue required="false" variableLength="false">Int32</command:parameterValue>
 					<dev:defaultValue/>
 				</command:parameter>
+				<command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="">
+					<maml:name>InitialSessionState</maml:name>
+					<maml:description>
+						<maml:para>The session state used by the runspaces when invoking ScriptBlock. This provides the functions, variables, drives, etc available to the ScriptBlock.
+
+By default, InitialSessionState.Create2() is used and the functions and variables from the current scope is then imported.
+						</maml:para>
+					</maml:description>
+					<command:parameterValue required="true" variableLength="false">InitialSessionState</command:parameterValue>
+					<dev:defaultValue>
+					</dev:defaultValue>
+				</command:parameter>
 				<command:parameter required="true" variableLength="false" globbing="false" pipelineInput="True (ByValue)" position="named" aliases="">
 					<maml:name>InputObject</maml:name>
 					<maml:description>
@@ -92,6 +104,17 @@
 						</maml:para>
 					</maml:description>
 					<command:parameterValue required="true" variableLength="false">ScriptBlock</command:parameterValue>
+					<dev:defaultValue>
+					</dev:defaultValue>
+				</command:parameter>
+				<command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="">
+					<maml:name>InitialSessionState</maml:name>
+					<maml:description>
+						<maml:para>The session state used by the runspaces when invoking ScriptBlock. This provides the functions, variables, drives, etc available to the ScriptBlock.
+						
+By default, InitialSessionState.Create2() is used and the functions and variables from the current scope is then imported.</maml:para>
+					</maml:description>
+					<command:parameterValue required="true" variableLength="false">InitialSessionState</command:parameterValue>
 					<dev:defaultValue>
 					</dev:defaultValue>
 				</command:parameter>
@@ -188,6 +211,17 @@
 					<maml:uri/>
 				</dev:type>
 				<dev:defaultValue/>
+			</command:parameter>
+			<command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="">
+				<maml:name>InitialSessionState</maml:name>
+				<maml:description>
+					<maml:para>The session state used by the runspaces when invoking ScriptBlock. This provides the functions, variables, drives, etc available to the ScriptBlock.
+By default, InitialSessionState.Create2() is used and the functions and variables from the current scope is then imported.
+					</maml:para>
+				</maml:description>
+				<command:parameterValue required="true" variableLength="false">InitialSessionState</command:parameterValue>
+				<dev:defaultValue>
+				</dev:defaultValue>
 			</command:parameter>
 			<command:parameter required="true" variableLength="false" globbing="false" pipelineInput="True (ByValue)" position="named" aliases="">
 				<maml:name>InputObject</maml:name>
