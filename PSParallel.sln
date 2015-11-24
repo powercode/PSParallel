@@ -21,6 +21,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "module", "module", "{9C879DF2-D1E2-4143-A95A-2374F8650F48}"
 	ProjectSection(SolutionItems) = preProject
 		module\en-US\about_PSParallel.Help.txt = module\en-US\about_PSParallel.Help.txt
+		module\en-US\PSParallel.dll-Help.xml = module\en-US\PSParallel.dll-Help.xml
 		module\PSParallel.psd1 = module\PSParallel.psd1
 	EndProjectSection
 EndProject

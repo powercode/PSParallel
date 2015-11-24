@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
-using System.Management.Automation.Language;
 using System.Management.Automation.Runspaces;
 using System.Threading;
 
@@ -12,22 +11,25 @@ using System.Threading;
 namespace PSParallel
 {
 	[Alias("ipa")]
-	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
+	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "ProgressSessionStateParams")]
 	public sealed class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
 		[Parameter(Mandatory = true, Position = 0)]
 		public ScriptBlock ScriptBlock { get; set; }
 
 		[Alias("ppi")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]		
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		public int ParentProgressId { get; set; } = -1;
 
 		[Alias("pi")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		public int ProgressId { get; set; } = 1000;
 
 		[Alias("pa")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
@@ -35,116 +37,97 @@ namespace PSParallel
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
+		[Parameter(ParameterSetName = "ProgressInitialSessionState", Mandatory = true)]
+		[Parameter(ParameterSetName = "NoProgressInitialSessionState", Mandatory = true)]
+		[ValidateNotNull]
+		public InitialSessionState InitialSessionState { get; set; }
+
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
+		[Parameter(ParameterSetName = "NoProgressSessionStateParams")]
+		public string[] ImportModule { get; set; }
+
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
-
-		[Parameter(ParameterSetName = "NoProgress")]
+		
+		[Parameter(ParameterSetName = "NoProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "NoProgressSessionStateParams")]
 		public SwitchParameter NoProgress { get; set; }
 
 		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
-		private PowershellPool m_powershellPool;
-		private InitialSessionState m_initialSessionState;
+		private PowershellPool m_powershellPool;		
 		private ProgressManager m_progressManager;
 
 		// this is only used when NoProgress is not specified
 		// Input is then captured in ProcessRecored and processed in EndProcessing
 		private List<PSObject> m_input;
 
-		private static InitialSessionState GetSessionState(ScriptBlock scriptBlock, SessionState sessionState)
+		private static InitialSessionState GetSessionState(SessionState sessionState, string[] modulesToImport)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
-
-			CaptureVariables(scriptBlock, sessionState, initialSessionState);
-			// this will get invoked recursively
-
-			var functions = GetFunctions(sessionState);
-			CaptureFunctions(scriptBlock, initialSessionState, functions, new HashSet<string>());
+			CaptureVariables(sessionState, initialSessionState);
+			CaptureFunctions(sessionState, initialSessionState);
+			if (modulesToImport != null)
+			{
+				initialSessionState.ImportPSModule(modulesToImport);
+			}
 			return initialSessionState;
 		}
 
-		private static IDictionary<string, FunctionInfo> GetFunctions(SessionState sessionState)
+		private static IEnumerable<FunctionInfo> GetFunctions(SessionState sessionState)
 		{
 			try
 			{
 				var functionDrive = sessionState.InvokeProvider.Item.Get("function:");
 				var baseObject = (Dictionary<string, FunctionInfo>.ValueCollection) functionDrive[0].BaseObject;
-				return baseObject.ToDictionary(f => f.Name);
+				return baseObject;
 			}
 			catch (DriveNotFoundException)
 			{
-				return new Dictionary<string, FunctionInfo>();
+				return new FunctionInfo[] {};
 			}
 		}
 
-		private static void CaptureFunctions(ScriptBlock scriptBlock, InitialSessionState initialSessionState, 
-			IDictionary<string, FunctionInfo> functions, ISet<string> processedFunctions)
+		private static IEnumerable<PSVariable> GetVariables(SessionState sessionState)
 		{
-			var commands = scriptBlock.Ast.FindAll(ast => ast is CommandAst, true);
-
-			var nonProcessedCommandNames = commands.Cast<CommandAst>()
-					.Select(commandAst => commandAst.CommandElements[0].Extent.Text)
-					.Where(commandName => !processedFunctions.Contains(commandName));
-			foreach (var commandName in nonProcessedCommandNames)
+			try
 			{
-
-				FunctionInfo functionInfo;
-				if (!functions.TryGetValue(commandName, out functionInfo))
-				{
-					continue;
-				}
-				initialSessionState.Commands.Add(new SessionStateFunctionEntry(functionInfo.Name, functionInfo.Definition));
-				processedFunctions.Add(commandName);
-				CaptureFunctions(functionInfo.ScriptBlock, initialSessionState, functions, processedFunctions);
+				string[] noTouchVariables = new[] {"null", "true", "false", "Error"};
+				var variables = sessionState.InvokeProvider.Item.Get("Variable:");
+				var psVariables = (IEnumerable<PSVariable>) variables[0].BaseObject;
+				return psVariables.Where(p=>!noTouchVariables.Contains(p.Name));
+			}
+			catch (DriveNotFoundException)
+			{
+				return new PSVariable[]{};
 			}
 		}
 
-
-		private static void CaptureVariables(ScriptBlock scriptBlock, SessionState sessionState,
-			InitialSessionState initialSessionState)
+		private static void CaptureFunctions(SessionState sessionState, InitialSessionState initialSessionState)
 		{
-			var variables = scriptBlock.Ast.FindAll(ast => ast is VariableExpressionAst, true);
-			var varDict = new Dictionary<string, SessionStateVariableEntry>();
-			foreach (var ast in variables)
+			var functions = GetFunctions(sessionState);
+			foreach (var func in functions) { 
+				initialSessionState.Commands.Add(new SessionStateFunctionEntry(func.Name, func.Definition));
+			}
+		}
+
+		private static void CaptureVariables(SessionState sessionState, InitialSessionState initialSessionState)
+		{
+			var variables = GetVariables(sessionState);
+			foreach(var variable in variables)
 			{
-				var v = (VariableExpressionAst) ast;
-				var variableName = v.VariablePath.UserPath;
-				if (variableName == "_" || varDict.ContainsKey(variableName))
+				var existing = initialSessionState.Variables[variable.Name].FirstOrDefault();
+				if (existing != null && (existing.Options & (ScopedItemOptions.Constant | ScopedItemOptions.ReadOnly)) != ScopedItemOptions.None)
 				{
 					continue;
 				}
-
-				var variable = sessionState.PSVariable.Get(variableName);
-				if (variable != null)
-				{
-					var ssve = new SessionStateVariableEntry(variable.Name, variable.Value,
-						variable.Description, variable.Options, variable.Attributes);
-					varDict.Add(variableName, ssve);
-				}
+				initialSessionState.Variables.Add(new SessionStateVariableEntry(variable.Name, variable.Value, variable.Description, variable.Options, variable.Attributes));
 			}
-
-			var prefs = new[]
-			{
-				"ErrorActionPreference", "DebugPreference", "VerbosePreference", "WarningPreference",
-				"ProgressPreference", "InformationPreference", "ConfirmPreference", "WhatIfPreference"
-			};
-			foreach (var pref in prefs)
-			{
-				var v = sessionState.PSVariable.Get(pref);
-				if (v != null)
-				{
-					var ssve = new SessionStateVariableEntry(v.Name, v.Value,
-						v.Description, v.Options, v.Attributes);
-					varDict.Add(v.Name, ssve);
-				}
-			}
-
-			initialSessionState.Variables.Add(varDict.Values);
 		}
 
 		protected override void BeginProcessing()
 		{
-			m_initialSessionState = GetSessionState(ScriptBlock, SessionState);
-			m_powershellPool = new PowershellPool(ThrottleLimit,m_initialSessionState, m_cancelationTokenSource.Token);
+			var iss = InitialSessionState ?? GetSessionState(SessionState, ImportModule);
+			m_powershellPool = new PowershellPool(ThrottleLimit, iss, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
 			{
@@ -168,7 +151,8 @@ namespace PSParallel
 
 		protected override void EndProcessing()
 		{
-			try {
+			try 
+			{ 
 				if (!NoProgress)
 				{
 					m_progressManager.TotalCount = m_input.Count;
@@ -204,10 +188,15 @@ namespace PSParallel
 		protected override void StopProcessing()
 		{
 			m_cancelationTokenSource.Cancel();
+			m_powershellPool.Stop();
 		}
 
 		private void WriteOutputs()
 		{
+			if (m_cancelationTokenSource.IsCancellationRequested)
+			{
+				return;
+			}
 			var streams = m_powershellPool.Streams;
 			foreach (var o in streams.Output.ReadAll())
 			{
@@ -246,7 +235,7 @@ namespace PSParallel
 
 		public void Dispose()
 		{
-			m_powershellPool.Dispose();
+			m_powershellPool.Dispose();			
 			m_cancelationTokenSource.Dispose();
 		}
 
