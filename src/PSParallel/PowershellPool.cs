@@ -106,13 +106,13 @@ namespace PSParallel
 		}
 
 		public void Stop()
+		{
+			m_availablePoolMembers.CompleteAdding();
+			foreach (var poolMember in m_poolMembers)
 			{
-				m_availablePoolMembers.CompleteAdding();
-				foreach (var poolMember in m_poolMembers)
-				{
-					poolMember.Stop();
-				}
-				WaitForAllPowershellCompleted(5000);
+				poolMember.Stop();
 			}
+			WaitForAllPowershellCompleted(5000);
 		}
+	}
 }
