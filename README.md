@@ -11,7 +11,7 @@ Install-Module PSParallel
 (1..255).Foreach{"192.168.0.$_"} | Invoke-Parallel { [PSCustomObject] @{IP=$_;Result=ping.exe -4 -a -w 20 $_}}
 ```
 
-Variables are captured from the parent session but functions are not.
+Variables and functions are captured from the parent session.
 
 ##Throttling
 To control the degree of parallelism, i.e. the number of concurrent runspaces, use the -ThrottleLimit parameter
