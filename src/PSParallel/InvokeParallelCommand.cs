@@ -11,22 +11,25 @@ using System.Threading;
 namespace PSParallel
 {
 	[Alias("ipa")]
-	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
+	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "ProgressSessionStateParams")]
 	public sealed class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
 		[Parameter(Mandatory = true, Position = 0)]
 		public ScriptBlock ScriptBlock { get; set; }
 
 		[Alias("ppi")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]		
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		public int ParentProgressId { get; set; } = -1;
 
 		[Alias("pi")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		public int ProgressId { get; set; } = 1000;
 
 		[Alias("pa")]
-		[Parameter(ParameterSetName = "Progress")]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
@@ -34,14 +37,20 @@ namespace PSParallel
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
-		[Parameter]
+		[Parameter(ParameterSetName = "ProgressInitialSessionState", Mandatory = true)]
+		[Parameter(ParameterSetName = "NoProgressInitialSessionState", Mandatory = true)]
 		[ValidateNotNull]
 		public InitialSessionState InitialSessionState { get; set; }
 
+		[Parameter(ParameterSetName = "ProgressSessionStateParams")]
+		[Parameter(ParameterSetName = "NoProgressSessionStateParams")]
+		public string[] ImportModule { get; set; }
+
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
-
-		[Parameter(ParameterSetName = "NoProgress")]
+		
+		[Parameter(ParameterSetName = "NoProgressInitialSessionState")]
+		[Parameter(ParameterSetName = "NoProgressSessionStateParams")]
 		public SwitchParameter NoProgress { get; set; }
 
 		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
@@ -52,11 +61,15 @@ namespace PSParallel
 		// Input is then captured in ProcessRecored and processed in EndProcessing
 		private List<PSObject> m_input;
 
-		private static InitialSessionState GetSessionState(SessionState sessionState)
+		private static InitialSessionState GetSessionState(SessionState sessionState, string[] modulesToImport)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
 			CaptureVariables(sessionState, initialSessionState);
 			CaptureFunctions(sessionState, initialSessionState);
+			if (modulesToImport != null)
+			{
+				initialSessionState.ImportPSModule(modulesToImport);
+			}
 			return initialSessionState;
 		}
 
@@ -113,7 +126,7 @@ namespace PSParallel
 
 		protected override void BeginProcessing()
 		{
-			var iss = InitialSessionState ?? GetSessionState(SessionState);
+			var iss = InitialSessionState ?? GetSessionState(SessionState, ImportModule);
 			m_powershellPool = new PowershellPool(ThrottleLimit, iss, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
