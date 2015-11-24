@@ -54,4 +54,4 @@ $moduleFileList  | foreach {Copy-Item "$rootdir\module\$_" -Destination $Install
 Get-ChildItem -Recurse -Path $InstallDirectory
 
 $cert = Get-Item Cert:\CurrentUser\My\98D6087848D1213F20149ADFE698473429A9B15D
-Get-ChildItem -File $InstallDirectory | Set-AuthenticodeSignature -Certificate $cert
+Get-ChildItem -File $InstallDirectory -Include *.dll,*.psd1 | Set-AuthenticodeSignature -Certificate $cert
