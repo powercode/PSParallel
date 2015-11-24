@@ -29,7 +29,7 @@ namespace PSParallel
 		[Parameter(ParameterSetName = "Progress")]
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
-		
+
 		[Parameter]
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
@@ -45,8 +45,7 @@ namespace PSParallel
 		public SwitchParameter NoProgress { get; set; }
 
 		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
-		private PowershellPool m_powershellPool;
-		private InitialSessionState m_initialSessionState;
+		private PowershellPool m_powershellPool;		
 		private ProgressManager m_progressManager;
 
 		// this is only used when NoProgress is not specified
@@ -56,7 +55,7 @@ namespace PSParallel
 		private static InitialSessionState GetSessionState(SessionState sessionState)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
-			CaptureVariables(sessionState, initialSessionState);						
+			CaptureVariables(sessionState, initialSessionState);
 			CaptureFunctions(sessionState, initialSessionState);
 			return initialSessionState;
 		}
@@ -114,8 +113,8 @@ namespace PSParallel
 
 		protected override void BeginProcessing()
 		{
-			m_initialSessionState = InitialSessionState ?? GetSessionState(SessionState);
-			m_powershellPool = new PowershellPool(ThrottleLimit,m_initialSessionState, m_cancelationTokenSource.Token);
+			var iss = InitialSessionState ?? GetSessionState(SessionState);
+			m_powershellPool = new PowershellPool(ThrottleLimit, iss, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
 			{
@@ -139,7 +138,8 @@ namespace PSParallel
 
 		protected override void EndProcessing()
 		{
-			try {
+			try 
+			{ 
 				if (!NoProgress)
 				{
 					m_progressManager.TotalCount = m_input.Count;
@@ -175,10 +175,15 @@ namespace PSParallel
 		protected override void StopProcessing()
 		{
 			m_cancelationTokenSource.Cancel();
+			m_powershellPool.Stop();
 		}
 
 		private void WriteOutputs()
 		{
+			if (m_cancelationTokenSource.IsCancellationRequested)
+			{
+				return;
+			}
 			var streams = m_powershellPool.Streams;
 			foreach (var o in streams.Output.ReadAll())
 			{
@@ -217,7 +222,7 @@ namespace PSParallel
 
 		public void Dispose()
 		{
-			m_powershellPool.Dispose();
+			m_powershellPool.Dispose();			
 			m_cancelationTokenSource.Dispose();
 		}
 

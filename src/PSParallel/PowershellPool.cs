@@ -39,9 +39,14 @@ namespace PSParallel
 
 		public void AddInput(ScriptBlock scriptblock,PSObject inputObject)
 		{
-			var powerShell = WaitForAvailablePowershell();
-			powerShell.BeginInvoke(scriptblock, inputObject);
-			Interlocked.Increment(ref m_busyCount);
+			try { 
+				var powerShell = WaitForAvailablePowershell();
+				Interlocked.Increment(ref m_busyCount);
+				powerShell.BeginInvoke(scriptblock, inputObject);
+			}
+			catch(OperationCanceledException)
+			{
+			}
 		}
 
 		public void Open()
@@ -81,19 +86,33 @@ namespace PSParallel
 
 		public void Dispose()
 		{
-			foreach (var pm in m_poolMembers)
-			{
-				pm.Dispose();
-			}
 			Streams.Dispose();
 			m_availablePoolMembers.Dispose();
 		}
 
-		public void ReportCompletion(PowerShellPoolMember poolmember)
+		public void ReportAvailable(PowerShellPoolMember poolmember)
 		{
 			Interlocked.Decrement(ref m_busyCount);
 			Interlocked.Increment(ref m_processedCount);
-			m_availablePoolMembers.Add(poolmember);
+			if(!m_cancellationToken.IsCancellationRequested)
+			{ 
+				m_availablePoolMembers.Add(poolmember);
+			}
 		}
-	}
+
+		public void ReportStopped(PowerShellPoolMember powerShellPoolMember)
+		{
+			Interlocked.Decrement(ref m_busyCount);
+		}
+
+		public void Stop()
+			{
+				m_availablePoolMembers.CompleteAdding();
+				foreach (var poolMember in m_poolMembers)
+				{
+					poolMember.Stop();
+				}
+				WaitForAllPowershellCompleted(5000);
+			}
+		}
 }
