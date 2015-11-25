@@ -4,7 +4,7 @@ $p = @{
     LicenseUri = "https://github.com/powercode/PSParallel/blob/master/LICENSE"
 	IconUri = "https://github.com/powercode/PSParallel/blob/master/images/PSParallel_icon.png"
     Tag = "Parallel","Runspace","Invoke","Foreach"
-    ReleaseNote = "Fixing big memory leak"
+    ReleaseNote = "Fixing parameter set bug"
     ProjectUri = "https://github.com/powercode/PSParallel"
 }
 
