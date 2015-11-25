@@ -18,38 +18,31 @@ if ('' -eq $InstallDirectory)
     $InstallDirectory = Join-Path -Path $personalModules -ChildPath PSParallel
 }
 
-if (!(Test-Path $InstallDirectory))
+if(-not (Test-Path $InstallDirectory))
 {
-    $null = mkdir $InstallDirectory    
+    $null = mkdir $InstallDirectory
 }
 
+@(
+    'module\PSParallel.psd1'		    
+	'src\PsParallel\bin\Release\PSParallel.dll'
+).Foreach{Copy-Item "$rootdir\$_" -Destination $InstallDirectory }
 
-$moduleFileList = @(
-    'PSParallel.psd1'		    
-)
-$binaryFileList = 'src\PsParallel\bin\Release\PSParallel.dll'
-$localizations = @{
-    'en-us'  = @(
-        'PSParallel.dll-Help.xml'
-	    'about_PSParallel.Help.txt'
-    )
+$lang = @('en-us')
+
+$lang.Foreach{
+	$lang = $_
+	$langDir = "$InstallDirectory\$lang"
+	if(-not (Test-Path $langDir))
+	{
+		$null = MkDir $langDir
+	}
+
+	@(
+		'PSParallel.dll-Help.xml'
+		'about_PSParallel.Help.txt'
+	).Foreach{Copy-Item "$rootDir\module\$lang\$_" -Destination $langDir}
 }
-
-foreach($kv in $localizations.GetEnumerator())
-{
-    $lang = $kv.Name
-    if(-not (Test-Path $InstallDirectory\$lang))
-    {
-        $null = MkDir $InstallDirectory\$lang
-    }
-    foreach($v in $kv.Value){
-        $locPath = Join-Path $lang $v
-        Copy-Item $rootDir\module\$locPath -Destination $InstallDirectory\$locPath
-    }
-}
-
-$binaryFileList | foreach { Copy-Item "$rootDir\$_" -Destination $InstallDirectory }
-$moduleFileList  | foreach {Copy-Item "$rootdir\module\$_" -Destination $InstallDirectory\$_ }
 
 Get-ChildItem -Recurse -Path $InstallDirectory
 

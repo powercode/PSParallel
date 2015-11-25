@@ -9,20 +9,23 @@ namespace PSParallel
 {
 	public class ImportArgumentCompleter : IArgumentCompleter
 	{
-		private static readonly CompletionResult[] EmptyCompletion = new CompletionResult[0];
-
+		private static readonly CompletionResult[] EmptyCompletion = new CompletionResult[0];		
+		
 		public IEnumerable<CompletionResult> CompleteArgument(string commandName, string parameterName, string wordToComplete,
 			CommandAst commandAst, IDictionary fakeBoundParameters)
 		{
-			var fakeParam = fakeBoundParameters[parameterName];
 			var paramList = new List<string>();
-			if (fakeParam.GetType().IsArray)
-			{
-				paramList.AddRange(from i in (object[]) fakeParam select i.ToString());
-			}
-			else
-			{
-				paramList.Add(fakeParam.ToString());
+			var fakeParam = fakeBoundParameters[parameterName];			
+			if(fakeParam != null) 
+			{ 
+				if (fakeParam.GetType().IsArray)
+				{
+					paramList.AddRange(from i in (object[]) fakeParam select i.ToString());
+				}
+				else
+				{
+					paramList.Add(fakeParam.ToString());
+				}
 			}
 			using (var powerShell = PowerShell.Create(RunspaceMode.CurrentRunspace))
 			{

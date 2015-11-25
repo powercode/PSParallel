@@ -88,7 +88,7 @@ namespace PSParallel
 		{
 			Streams.Dispose();
 			m_availablePoolMembers.Dispose();
-			m_runspacePool.Dispose();
+			m_runspacePool?.Dispose();
 		}
 
 		public void ReportAvailable(PowerShellPoolMember poolmember)

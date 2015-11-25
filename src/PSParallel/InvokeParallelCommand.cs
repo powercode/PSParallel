@@ -236,7 +236,7 @@ namespace PSParallel
 		protected override void StopProcessing()
 		{
 			m_cancelationTokenSource.Cancel();
-			m_powershellPool.Stop();
+			m_powershellPool?.Stop();
 		}
 
 		private void WriteOutputs()
