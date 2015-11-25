@@ -39,26 +39,27 @@ namespace PSParallel
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
-		[Parameter(ParameterSetName = "InitialSessionState", Mandatory = true)]
-		[ValidateNotNull]
+		[Parameter(ParameterSetName = "InitialSessionState", Mandatory = true)]		
+		[AllowNull]
+		[Alias("iss")]
 		public InitialSessionState InitialSessionState { get; set; }
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
-		[Alias("im")]
+		[Alias("imo")]
 		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
 		public string[] ImportModule { get; set; }
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
 		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
-		[Alias("iv")]
+		[Alias("iva")]
 		public string[] ImportVariable{ get; set; }
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
 		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
-		[Alias("if")]
+		[Alias("ifu")]
 		public string[] ImportFunction{ get; set; }
 
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
@@ -153,10 +154,23 @@ namespace PSParallel
 			}
 		}
 
+		InitialSessionState GetSessionState()
+		{
+			if (MyInvocation.BoundParameters.ContainsKey(nameof(InitialSessionState)))
+			{
+				if (InitialSessionState == null)
+				{
+					return InitialSessionState.Create();
+				}
+				return InitialSessionState;
+			}
+			return GetSessionState(SessionState, ImportModule, ImportVariable, ImportFunction);
+		}
+
 		protected override void BeginProcessing()
 		{
 			ValidateParameters();
-			var iss = InitialSessionState ?? GetSessionState(SessionState, ImportModule, ImportVariable, ImportFunction);
+			var iss = GetSessionState();
 			m_powershellPool = new PowershellPool(ThrottleLimit, iss, m_cancelationTokenSource.Token);
 			m_powershellPool.Open();
 			if (!NoProgress)
