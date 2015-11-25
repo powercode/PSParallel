@@ -4,6 +4,7 @@ using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
+using Microsoft.PowerShell.Commands;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
@@ -44,14 +45,20 @@ namespace PSParallel
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
+		[Alias("im")]
+		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
 		public string[] ImportModule { get; set; }
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
+		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
+		[Alias("iv")]
 		public string[] ImportVariable{ get; set; }
 
 		[Parameter(ParameterSetName = "SessionStateParams")]
 		[ValidateNotNull]
+		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
+		[Alias("if")]
 		public string[] ImportFunction{ get; set; }
 
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
