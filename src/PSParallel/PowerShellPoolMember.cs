@@ -6,18 +6,25 @@ namespace PSParallel
 	class PowerShellPoolMember : IDisposable
 	{
 		private readonly PowershellPool m_pool;
+		private readonly int m_index;
 		private readonly PowerShellPoolStreams m_poolStreams;
 		private PowerShell m_powerShell;
 		public PowerShell PowerShell => m_powerShell;
+		public int Index => m_index ;
+
 		private readonly PSDataCollection<PSObject> m_input =new PSDataCollection<PSObject>();
 		private PSDataCollection<PSObject> m_output;
+		private ProgressProjector m_progressProjector;
+		public ProgressProjector ProgressProjector => m_progressProjector;
 
-		public PowerShellPoolMember(PowershellPool pool)
+		public PowerShellPoolMember(PowershellPool pool, int index)
 		{
 			m_pool = pool;
+			m_index = index;
 			m_poolStreams = m_pool.Streams;
-			m_input.Complete();
+			m_input.Complete();			
 			CreatePowerShell();
+			m_progressProjector = new ProgressProjector();			
 		}
 
 		private void PowerShellOnInvocationStateChanged(object sender, PSInvocationStateChangedEventArgs psInvocationStateChangedEventArgs)
@@ -81,10 +88,13 @@ namespace PSParallel
 
 		public void BeginInvoke(ScriptBlock scriptblock, PSObject inputObject)
 		{
-			string command = $"param($_,$PSItem){scriptblock}";
+			m_progressProjector.Start();
+			string command = $"param($_,$PSItem, $PSPArallelIndex,$PSParallelProgressId){scriptblock}";
 			m_powerShell.AddScript(command)
 				.AddParameter("_", inputObject)
-				.AddParameter("PSItem", inputObject);
+				.AddParameter("PSItem", inputObject)
+				.AddParameter("PSParallelIndex", m_index)
+				.AddParameter("PSParallelProgressId", m_index+1000);
 			m_powerShell.BeginInvoke(m_input, m_output);
 		}
 
@@ -115,7 +125,8 @@ namespace PSParallel
 
 		private void ProgressOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
-			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];
+			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];			
+			m_progressProjector.ReportProgress(record.PercentComplete);
 			m_poolStreams.Progress.Add(record);
 		}
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
@@ -185,8 +186,10 @@ namespace PSParallel
 		{
 			if(NoProgress)
 			{
-				m_powershellPool.AddInput(ScriptBlock, InputObject);
-				WriteOutputs();
+				while (!m_powershellPool.TryAddInput(ScriptBlock, InputObject))
+				{
+					WriteOutputs();
+				}								
 			}
 			else
 			{
@@ -205,8 +208,10 @@ namespace PSParallel
 					{
 						var pr = m_progressManager.GetCurrentProgressRecord($"Starting processing of {i}", m_powershellPool.ProcessedCount);
 						WriteProgress(pr);
-						m_powershellPool.AddInput(ScriptBlock, i);
-						WriteOutputs();
+						while (!m_powershellPool.TryAddInput(ScriptBlock, i))
+						{
+							WriteOutputs();
+						}												
 					}
 				}
 				while(!m_powershellPool.WaitForAllPowershellCompleted(100))
@@ -241,6 +246,7 @@ namespace PSParallel
 
 		private void WriteOutputs()
 		{
+			Debug.WriteLine("Processing output");
 			if (m_cancelationTokenSource.IsCancellationRequested)
 			{
 				return;

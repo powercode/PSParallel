@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
@@ -8,14 +9,14 @@ using System.Threading;
 
 namespace PSParallel
 {
-	class PowershellPool : IDisposable
+	sealed class PowershellPool : IDisposable
 	{
 		private int m_busyCount;
 		private int m_processedCount;
 		private readonly CancellationToken m_cancellationToken;
 		private readonly RunspacePool m_runspacePool;
 		private readonly List<PowerShellPoolMember> m_poolMembers;
-		private readonly BlockingCollection<PowerShellPoolMember> m_availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentStack<PowerShellPoolMember> ());
+		private readonly BlockingCollection<PowerShellPoolMember> m_availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
 
 		public int ProcessedCount => m_processedCount;
@@ -26,9 +27,9 @@ namespace PSParallel
 			m_processedCount = 0;
 			m_cancellationToken = cancellationToken;
 
-			for (int i = 0; i < poolSize; i++)
+			for (var i = 0; i < poolSize; i++)
 			{
-				var powerShellPoolMember = new PowerShellPoolMember(this);
+				var powerShellPoolMember = new PowerShellPoolMember(this, i+1);
 				m_poolMembers.Add(powerShellPoolMember);
 				m_availablePoolMembers.Add(powerShellPoolMember);
 			}
@@ -37,16 +38,17 @@ namespace PSParallel
 			m_runspacePool.SetMaxRunspaces(poolSize);
 		}
 
-		public void AddInput(ScriptBlock scriptblock,PSObject inputObject)
-		{
-			try { 
-				var powerShell = WaitForAvailablePowershell();
-				Interlocked.Increment(ref m_busyCount);
-				powerShell.BeginInvoke(scriptblock, inputObject);
-			}
-			catch(OperationCanceledException)
+		public bool TryAddInput(ScriptBlock scriptblock,PSObject inputObject)
+		{			
+			PowerShellPoolMember poolMember;
+			if(!TryWaitForAvailablePowershell(100, out poolMember))
 			{
+				return false;							
 			}
+
+			Interlocked.Increment(ref m_busyCount);
+			poolMember.BeginInvoke(scriptblock, inputObject);
+			return true;
 		}
 
 		public void Open()
@@ -76,11 +78,19 @@ namespace PSParallel
 			return false;
 		}
 
-		private PowerShellPoolMember WaitForAvailablePowershell()
-		{
-			var poolmember = m_availablePoolMembers.Take(m_cancellationToken);
-			poolmember.PowerShell.RunspacePool = m_runspacePool;
-			return poolmember;
+		private bool TryWaitForAvailablePowershell(int milliseconds, out PowerShellPoolMember poolMember)
+		{			
+			if(!m_availablePoolMembers.TryTake(out poolMember, milliseconds, m_cancellationToken))
+			{
+				m_cancellationToken.ThrowIfCancellationRequested();
+				Debug.WriteLine($"WaitForAvailablePowershell - TryTake failed");
+				poolMember = null;
+				return false;
+			}
+			
+			poolMember.PowerShell.RunspacePool = m_runspacePool;
+			Debug.WriteLine($"WaitForAvailablePowershell - Busy: {m_busyCount} _processed {m_processedCount}, member = {poolMember.Index}");
+			return true;
 		}
 
 
@@ -95,10 +105,13 @@ namespace PSParallel
 		{
 			Interlocked.Decrement(ref m_busyCount);
 			Interlocked.Increment(ref m_processedCount);
-			if(!m_cancellationToken.IsCancellationRequested)
-			{ 
-				m_availablePoolMembers.Add(poolmember);
-			}
+			while (!m_availablePoolMembers.TryAdd(poolmember, 1000, m_cancellationToken))
+			{
+				m_cancellationToken.ThrowIfCancellationRequested();
+				Debug.WriteLine($"WaitForAvailablePowershell - TryAdd failed");
+			}			
+			Debug.WriteLine($"ReportAvailable - Busy: {m_busyCount} _processed {m_processedCount}, member = {poolmember.Index}");	
+			
 		}
 
 		public void ReportStopped(PowerShellPoolMember powerShellPoolMember)
