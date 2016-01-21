@@ -46,7 +46,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GlobalSuppressions.cs" />
-    <Compile Include="ImportArgumentCompleter.cs" />
     <Compile Include="InvokeParallelCommand.cs" />
     <Compile Include="PowershellPool.cs" />
     <Compile Include="PowerShellPoolMember.cs" />

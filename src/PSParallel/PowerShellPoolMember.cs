@@ -14,8 +14,9 @@ namespace PSParallel
 
 		private readonly PSDataCollection<PSObject> m_input =new PSDataCollection<PSObject>();
 		private PSDataCollection<PSObject> m_output;
-		private ProgressProjector m_progressProjector;
-		public ProgressProjector ProgressProjector => m_progressProjector;
+		private int m_percentComplete;
+		public int PercentComplete => m_percentComplete;
+		
 
 		public PowerShellPoolMember(PowershellPool pool, int index)
 		{
@@ -23,8 +24,7 @@ namespace PSParallel
 			m_index = index;
 			m_poolStreams = m_pool.Streams;
 			m_input.Complete();			
-			CreatePowerShell();
-			m_progressProjector = new ProgressProjector();			
+			CreatePowerShell();			
 		}
 
 		private void PowerShellOnInvocationStateChanged(object sender, PSInvocationStateChangedEventArgs psInvocationStateChangedEventArgs)
@@ -88,7 +88,7 @@ namespace PSParallel
 
 		public void BeginInvoke(ScriptBlock scriptblock, PSObject inputObject)
 		{
-			m_progressProjector.Start();
+			m_percentComplete = 0;
 			string command = $"param($_,$PSItem, $PSPArallelIndex,$PSParallelProgressId){scriptblock}";
 			m_powerShell.AddScript(command)
 				.AddParameter("_", inputObject)
@@ -126,7 +126,7 @@ namespace PSParallel
 		private void ProgressOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];			
-			m_progressProjector.ReportProgress(record.PercentComplete);
+			m_percentComplete = record.PercentComplete;
 			m_poolStreams.Progress.Add(record);
 		}
 

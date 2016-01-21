@@ -5,7 +5,6 @@ using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
-using Microsoft.PowerShell.Commands;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
@@ -44,25 +43,7 @@ namespace PSParallel
 		[AllowNull]
 		[Alias("iss")]
 		public InitialSessionState InitialSessionState { get; set; }
-
-		[Parameter(ParameterSetName = "SessionStateParams")]
-		[ValidateNotNull]
-		[Alias("imo")]
-		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
-		public string[] ImportModule { get; set; }
-
-		[Parameter(ParameterSetName = "SessionStateParams")]
-		[ValidateNotNull]
-		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
-		[Alias("iva")]
-		public string[] ImportVariable{ get; set; }
-
-		[Parameter(ParameterSetName = "SessionStateParams")]
-		[ValidateNotNull]
-		[ArgumentCompleter(typeof(ImportArgumentCompleter))]
-		[Alias("ifu")]
-		public string[] ImportFunction{ get; set; }
-
+		
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
 
@@ -77,25 +58,21 @@ namespace PSParallel
 		// Input is then captured in ProcessRecored and processed in EndProcessing
 		private List<PSObject> m_input;
 
-		private static InitialSessionState GetSessionState(SessionState sessionState, string[] modulesToImport, string[] variablesToImport, string[] functionsToImport)
+		private static InitialSessionState GetSessionState(SessionState sessionState)
 		{
 			var initialSessionState = InitialSessionState.CreateDefault2();
-			CaptureVariables(sessionState, initialSessionState, variablesToImport);
-			CaptureFunctions(sessionState, initialSessionState, functionsToImport);
-			if (modulesToImport != null)
-			{
-				initialSessionState.ImportPSModule(modulesToImport);
-			}
+			CaptureVariables(sessionState, initialSessionState);
+			CaptureFunctions(sessionState, initialSessionState);			
 			return initialSessionState;
 		}
 
-		private static IEnumerable<FunctionInfo> GetFunctions(SessionState sessionState, string[] functionsToImport)
+		private static IEnumerable<FunctionInfo> GetFunctions(SessionState sessionState)
 		{
 			try
 			{
 				var functionDrive = sessionState.InvokeProvider.Item.Get("function:");
-				var baseObject = (Dictionary<string, FunctionInfo>.ValueCollection) functionDrive[0].BaseObject;
-				return functionsToImport == null ? baseObject : baseObject.Where(f=>functionsToImport.Contains(f.Name, StringComparer.OrdinalIgnoreCase));
+				return (Dictionary<string, FunctionInfo>.ValueCollection) functionDrive[0].BaseObject;
+				
 			}
 			catch (DriveNotFoundException)
 			{
@@ -103,15 +80,14 @@ namespace PSParallel
 			}
 		}
 
-		private static IEnumerable<PSVariable> GetVariables(SessionState sessionState, string[] variablesToImport)
+		private static IEnumerable<PSVariable> GetVariables(SessionState sessionState)
 		{
 			try
 			{
 				string[] noTouchVariables = {"null", "true", "false", "Error"};
 				var variables = sessionState.InvokeProvider.Item.Get("Variable:");
 				var psVariables = (IEnumerable<PSVariable>) variables[0].BaseObject;
-				return psVariables.Where(p=>!noTouchVariables.Contains(p.Name) && 
-										(variablesToImport == null || variablesToImport.Contains(p.Name, StringComparer.OrdinalIgnoreCase)));
+				return psVariables.Where(p=>!noTouchVariables.Contains(p.Name));
 			}
 			catch (DriveNotFoundException)
 			{
@@ -119,17 +95,17 @@ namespace PSParallel
 			}
 		}
 
-		private static void CaptureFunctions(SessionState sessionState, InitialSessionState initialSessionState, string[] functionsToImport)
+		private static void CaptureFunctions(SessionState sessionState, InitialSessionState initialSessionState)
 		{
-			var functions = GetFunctions(sessionState, functionsToImport);
+			var functions = GetFunctions(sessionState);
 			foreach (var func in functions) { 
 				initialSessionState.Commands.Add(new SessionStateFunctionEntry(func.Name, func.Definition));
 			}
 		}
 
-		private static void CaptureVariables(SessionState sessionState, InitialSessionState initialSessionState, string[] variablesToImport)
+		private static void CaptureVariables(SessionState sessionState, InitialSessionState initialSessionState)
 		{
-			var variables = GetVariables(sessionState, variablesToImport);
+			var variables = GetVariables(sessionState);
 			foreach(var variable in variables)
 			{
 				var existing = initialSessionState.Variables[variable.Name].FirstOrDefault();
@@ -165,7 +141,7 @@ namespace PSParallel
 				}
 				return InitialSessionState;
 			}
-			return GetSessionState(SessionState, ImportModule, ImportVariable, ImportFunction);
+			return GetSessionState(SessionState);
 		}
 
 		protected override void BeginProcessing()
@@ -206,8 +182,9 @@ namespace PSParallel
 					m_progressManager.TotalCount = m_input.Count;
 					foreach (var i in m_input)
 					{
-						var pr = m_progressManager.GetCurrentProgressRecord($"Starting processing of {i}", m_powershellPool.ProcessedCount);
-						WriteProgress(pr);
+						var processed = m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount();
+						m_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", processed);
+						WriteProgress(m_progressManager.ProgressRecord);
 						while (!m_powershellPool.TryAddInput(ScriptBlock, i))
 						{
 							WriteOutputs();
@@ -218,8 +195,8 @@ namespace PSParallel
 				{	
 					if(!NoProgress)
 					{				
-						var pr = m_progressManager.GetCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", m_powershellPool.ProcessedCount);
-						WriteProgress(pr);
+						m_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", m_powershellPool.ProcessedCount);
+						WriteProgress(m_progressManager.ProgressRecord);
 					}
 					if (Stopping)
 					{
@@ -277,13 +254,19 @@ namespace PSParallel
 			{
 				WriteVerbose(v.Message);
 			}
-			foreach (var p in streams.Progress.ReadAll())
+			var progressCount = streams.Progress.Count;
+			if (progressCount > 0)
 			{
-				if(!NoProgress)
+				foreach (var p in streams.Progress.ReadAll())
 				{
-					p.ParentActivityId = m_progressManager.ActivityId;
-				}
-				WriteProgress(p);
+					if(!NoProgress)
+					{
+						p.ParentActivityId = m_progressManager.ActivityId;														
+					}
+					WriteProgress(p);				
+				}				
+				m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount());
+				WriteProgress(m_progressManager.ProgressRecord);
 			}
 		}
 

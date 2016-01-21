@@ -1,6 +1,14 @@
-﻿param([string]$InstallDirectory)
+﻿$manPath = Get-ChildItem -recurse $PSScriptRoot/../module -include *.psd1 | select -first 1
+$man = Test-ModuleManifest $manPath
 
-$rootDir = Split-Path (Split-Path $MyInvocation.MyCommand.Path)
+$name = $man.Name
+[string]$version = $man.Version
+$moduleSourceDir = "$PSScriptRoot/$name"
+$moduleDir = "~/documents/WindowsPowerShell/Modules/$name/$version/"
+
+[string]$rootDir = Resolve-Path $PSSCriptRoot/..
+
+$InstallDirectory = $moduleDir
 
 if ('' -eq $InstallDirectory)
 {
@@ -46,5 +54,8 @@ $lang.Foreach{
 
 Get-ChildItem -Recurse -Path $InstallDirectory
 
-$cert = Get-Item Cert:\CurrentUser\My\98D6087848D1213F20149ADFE698473429A9B15D
-Get-ChildItem -File $InstallDirectory -Include *.dll,*.psd1 | Set-AuthenticodeSignature -Certificate $cert
+$cert =Get-ChildItem cert:\CurrentUser\My -CodeSigningCert
+if($cert)
+{
+    Get-ChildItem -File $InstallDirectory -Include *.dll,*.psd1 -Recurse | Set-AuthenticodeSignature -Certificate $cert -TimestampServer http://timestamp.verisign.com/scripts/timstamp.dll
+}
