@@ -12,26 +12,22 @@ using System.Threading;
 namespace PSParallel
 {
 	[Alias("ipa")]
-	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "SessionStateParams")]
+	[Cmdlet("Invoke", "Parallel", DefaultParameterSetName = "Progress")]
 	public sealed class InvokeParallelCommand : PSCmdlet, IDisposable
 	{
 		[Parameter(Mandatory = true, Position = 0)]
 		public ScriptBlock ScriptBlock { get; set; }
 
-		[Alias("ppi")]
-		[Parameter(ParameterSetName = "InitialSessionState")]
-		[Parameter(ParameterSetName = "SessionStateParams")]
-		[Parameter(ParameterSetName = "")]
+		[Parameter(ParameterSetName = "Progress")]
+		[Alias("ppi")]						
 		public int ParentProgressId { get; set; } = -1;
 
-		[Alias("pi")]
-		[Parameter(ParameterSetName = "InitialSessionState")]
-		[Parameter(ParameterSetName = "SessionStateParams")]
+		[Parameter(ParameterSetName = "Progress")]
+		[Alias("pi")]				
 		public int ProgressId { get; set; } = 1000;
 
-		[Alias("pa")]
-		[Parameter(ParameterSetName = "InitialSessionState")]
-		[Parameter(ParameterSetName = "SessionStateParams")]
+		[Parameter(ParameterSetName = "Progress")]
+		[Alias("pa")]				
 		[ValidateNotNullOrEmpty]
 		public string ProgressActivity { get; set; } = "Invoke-Parallel";
 
@@ -39,7 +35,7 @@ namespace PSParallel
 		[ValidateRange(1,128)]
 		public int ThrottleLimit { get; set; } = 32;
 
-		[Parameter(ParameterSetName = "InitialSessionState", Mandatory = true)]		
+		[Parameter]		
 		[AllowNull]
 		[Alias("iss")]
 		public InitialSessionState InitialSessionState { get; set; }
@@ -47,7 +43,7 @@ namespace PSParallel
 		[Parameter(ValueFromPipeline = true, Mandatory = true)]
 		public PSObject InputObject { get; set; }
 
-		[Parameter]
+		[Parameter(ParameterSetName = "NoProgress")]
 		public SwitchParameter NoProgress { get; set; }
 
 		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
@@ -264,9 +260,12 @@ namespace PSParallel
 						p.ParentActivityId = m_progressManager.ActivityId;														
 					}
 					WriteProgress(p);				
-				}				
-				m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount());
-				WriteProgress(m_progressManager.ProgressRecord);
+				}		
+				if(!NoProgress)
+				{		
+					m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount());
+					WriteProgress(m_progressManager.ProgressRecord);
+				}
 			}
 		}
 

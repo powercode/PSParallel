@@ -1,6 +1,13 @@
+$manPath = Get-ChildItem -recurse $PSScriptRoot/../module -include *.psd1 | select -first 1
+$man = Test-ModuleManifest $manPath
+
+$name = $man.Name
+[string]$version = $man.Version
+
 $p = @{
-    Name = "PSParallel"
+    Name = $name
     NuGetApiKey = $NuGetApiKey
+    RequiredVersion = $version
 }
 
 Publish-Module @p

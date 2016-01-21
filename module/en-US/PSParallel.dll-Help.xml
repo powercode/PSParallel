@@ -88,13 +88,48 @@ at contains the objects, or type a command or expression that gets the objects.<
 					</maml:description>
 					<command:parameterValue required="true" variableLength="false">PSObject</command:parameterValue>
 				</command:parameter>
-				<command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="named" aliases="">
+			</command:syntaxItem>
+			<command:syntaxItem>
+				<maml:name>Invoke-Parallel</maml:name>
+				<command:parameter required="true" pipelineinput="false" globbing="false" position="named">
+					<maml:name>ScriptBlock</maml:name>
+					<maml:description>
+						<maml:para>Specifies the operation that is performed on each input object. Enter a script block that describes the operation.</maml:para>
+					</maml:description>
+					<command:parameterValue required="true">ScriptBlock</command:parameterValue>
+				</command:parameter>
+				<command:parameter required="false" pipelineinput="false" globbing="false" position="named">
+					<maml:name>ThrottleLimit</maml:name>
+					<maml:description>
+						<maml:para>Specifies the maximum number of concurrent connections that can be established to run this command. If you omit this
+parameter or enter a value of 0, the default value, 16, is used.</maml:para>
+					</maml:description>
+					<command:parameterValue required="false">Int32</command:parameterValue>
+				</command:parameter>
+				<command:parameter required="true" pipelineinput="True (ByValue)" globbing="false" position="named">
+					<maml:name>InputObject</maml:name>
+					<maml:description>
+						<maml:para>Specifies the input objects. Invoke-Parallel runs the script block on each input object in parallel. Enter a variable th
+at contains the objects, or type a command or expression that gets the objects.</maml:para>
+					</maml:description>
+					<command:parameterValue required="true">PSObject</command:parameterValue>
+				</command:parameter>
+				<command:parameter required="false" pipelineinput="false" globbing="false" position="named">
 					<maml:name>NoProgress</maml:name>
 					<maml:description>
 						<maml:para>Will not show progress from Invoke-Progress. Progress from the scriptblock will still be displayed.</maml:para>
 					</maml:description>
-					<command:parameterValue required="false" variableLength="false">SwitchParameter</command:parameterValue>
-					<dev:defaultValue/>
+					<command:parameterValue required="false">SwitchParameter</command:parameterValue>
+				</command:parameter>
+				<command:parameter required="true" pipelineinput="false" globbing="false" position="named">
+					<maml:name>InitialSessionState</maml:name>
+					<maml:description>
+						<maml:para>The session state used by the runspaces when invoking ScriptBlock. This provides the functions, variables, drives, etc
+available to the ScriptBlock.
+By default, InitialSessionState.Create2() is used and the functions and variables from the current scope is then
+imported.</maml:para>
+					</maml:description>
+					<command:parameterValue required="true">InitialSessionState</command:parameterValue>
 				</command:parameter>
 			</command:syntaxItem>
 		</command:syntax>
@@ -204,6 +239,14 @@ imported.</maml:para>
 				</dev:type>
 				<dev:defaultValue/>
 			</command:parameter>
+			<command:parameter required="false" globbing="false" pipelineInput="false" position="named">
+				<maml:name>Parameter8</maml:name>
+				<maml:description>
+					<maml:para/>
+				</maml:description>
+				<command:parameterValue required="false"/>
+				<dev:defaultValue/>
+			</command:parameter>
 		</command:parameters>
 		<command:inputTypes>
 			<!--Inputs-->
@@ -233,10 +276,11 @@ imported.</maml:para>
 				<maml:introduction>
 					<maml:para>PS C:\&gt;</maml:para>
 				</maml:introduction>
-				<dev:code>(1..255).ForEach{&quot;192.168.0.$_&quot;} | Invoke-Parallel {$ip = $_; $res = ping.exe -4 -w 20 $_; [PSCustomObject] @{IP=$ip;Res=$res}} -ThrottleLimit 64</dev:code>
+				<dev:code>(1..255).ForEach{&quot;192.168.0.$_&quot;} | 
+    Invoke-Parallel {$ip = [IPAddress]$_; $res = ping.exe -n 1 -4 -w 20 -a $_; [PSCustomObject] @{IP=$ip;Res=$res}} -ThrottleLimit 64</dev:code>
 				<dev:remarks>
-					<maml:para>This example pings all iP v4 addresses on a subnet, specifying Throttlelimit to 64, i.e. running up to 64 runspaces in p
-arallel.</maml:para>
+					<maml:para>This example pings all iP v4 addresses on a subnet, specifying Throttlelimit to 64, i.e. running up to 64 runspaces 
+in parallel.</maml:para>
 				</dev:remarks>
 			</command:example>
 		</command:examples>
