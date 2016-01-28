@@ -46,13 +46,13 @@ namespace PSParallel
 		[Parameter(ParameterSetName = "NoProgress")]
 		public SwitchParameter NoProgress { get; set; }
 
-		private readonly CancellationTokenSource m_cancelationTokenSource = new CancellationTokenSource();
-		private PowershellPool m_powershellPool;
-		private ProgressManager m_progressManager;
+		private readonly CancellationTokenSource _cancelationTokenSource = new CancellationTokenSource();
+		private PowershellPool _powershellPool;
+		private ProgressManager _progressManager;
 
 		// this is only used when NoProgress is not specified
 		// Input is then captured in ProcessRecored and processed in EndProcessing
-		private List<PSObject> m_input;
+		private List<PSObject> _input;
 
 		private static InitialSessionState GetSessionState(SessionState sessionState)
 		{
@@ -144,12 +144,12 @@ namespace PSParallel
 		{
 			ValidateParameters();
 			var iss = GetSessionState();
-			m_powershellPool = new PowershellPool(ThrottleLimit, iss, m_cancelationTokenSource.Token);
-			m_powershellPool.Open();
+			_powershellPool = new PowershellPool(ThrottleLimit, iss, _cancelationTokenSource.Token);
+			_powershellPool.Open();
 			if (!NoProgress)
 			{
-				m_progressManager = new ProgressManager(ProgressId, ProgressActivity, $"Processing with {ThrottleLimit} workers", ParentProgressId);
-				m_input = new List<PSObject>(500);
+				_progressManager = new ProgressManager(ProgressId, ProgressActivity, $"Processing with {ThrottleLimit} workers", ParentProgressId);
+				_input = new List<PSObject>(500);
 			}
 		}
 		
@@ -158,14 +158,14 @@ namespace PSParallel
 		{
 			if(NoProgress)
 			{
-				while (!m_powershellPool.TryAddInput(ScriptBlock, InputObject))
+				while (!_powershellPool.TryAddInput(ScriptBlock, InputObject))
 				{
 					WriteOutputs();
 				}								
 			}
 			else
 			{
-				m_input.Add(InputObject);
+				_input.Add(InputObject);
 			}
 		}
 
@@ -175,23 +175,23 @@ namespace PSParallel
 			{ 
 				if (!NoProgress)
 				{
-					m_progressManager.TotalCount = m_input.Count;
-					foreach (var i in m_input)
+					_progressManager.TotalCount = _input.Count;
+					foreach (var i in _input)
 					{
-						m_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", m_powershellPool.ProcessedCount);
-						WriteProgress(m_progressManager.ProgressRecord);
-						while (!m_powershellPool.TryAddInput(ScriptBlock, i))
+						_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", _powershellPool.ProcessedCount);
+						WriteProgress(_progressManager.ProgressRecord);
+						while (!_powershellPool.TryAddInput(ScriptBlock, i))
 						{
 							WriteOutputs();
 						}												
 					}
 				}
-				while(!m_powershellPool.WaitForAllPowershellCompleted(100))
+				while(!_powershellPool.WaitForAllPowershellCompleted(100))
 				{	
 					if(!NoProgress)
 					{				
-						m_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", m_powershellPool.ProcessedCount);
-						WriteProgress(m_progressManager.ProgressRecord);
+						_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", _powershellPool.ProcessedCount);
+						WriteProgress(_progressManager.ProgressRecord);
 					}
 					if (Stopping)
 					{
@@ -205,25 +205,25 @@ namespace PSParallel
 			{
 				if(!NoProgress)
 				{
-					WriteProgress(m_progressManager.Completed());
+					WriteProgress(_progressManager.Completed());
 				}
 			}
 		}
 
 		protected override void StopProcessing()
 		{
-			m_cancelationTokenSource.Cancel();
-			m_powershellPool?.Stop();
+			_cancelationTokenSource.Cancel();
+			_powershellPool?.Stop();
 		}
 
 		private void WriteOutputs()
 		{
 			Debug.WriteLine("Processing output");
-			if (m_cancelationTokenSource.IsCancellationRequested)
+			if (_cancelationTokenSource.IsCancellationRequested)
 			{
 				return;
 			}
-			var streams = m_powershellPool.Streams;
+			var streams = _powershellPool.Streams;
 			foreach (var o in streams.Output.ReadAll())
 			{
 				WriteObject(o, false);
@@ -256,22 +256,22 @@ namespace PSParallel
 				{
 					if(!NoProgress)
 					{
-						p.ParentActivityId = m_progressManager.ActivityId;														
+						p.ParentActivityId = _progressManager.ActivityId;														
 					}
 					WriteProgress(p);				
 				}		
 				if(!NoProgress)
 				{		
-					m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount);
-					WriteProgress(m_progressManager.ProgressRecord);
+					_progressManager.UpdateCurrentProgressRecord(_powershellPool.ProcessedCount);
+					WriteProgress(_progressManager.ProgressRecord);
 				}
 			}
 		}
 
 		public void Dispose()
 		{
-			m_powershellPool?.Dispose();
-			m_cancelationTokenSource.Dispose();
+			_powershellPool?.Dispose();
+			_cancelationTokenSource.Dispose();
 		}
 
 	}

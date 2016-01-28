@@ -11,7 +11,7 @@ namespace PSParallelTests
 	[TestClass]
 	public sealed class InvokeParallelTests : IDisposable
 	{
-		readonly RunspacePool m_runspacePool;
+		readonly RunspacePool _runspacePool;
 
 		public InvokeParallelTests()
 		{						
@@ -33,16 +33,16 @@ namespace PSParallelTests
 			{
 				new SessionStateVariableEntry("ErrorActionPreference", ActionPreference.Continue, "Dictates the action taken when an error message is delivered"), 
 			});
-			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
-			m_runspacePool.SetMaxRunspaces(10);
-			m_runspacePool.Open();
+			_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
+			_runspacePool.SetMaxRunspaces(10);
+			_runspacePool.Open();
 		}
 		[TestMethod]
 		public void TestOutput()
 		{
 			using (var ps = PowerShell.Create())
 			{
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 
 				ps.AddCommand("Invoke-Parallel")
 					.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
@@ -60,7 +60,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 
 				ps.AddCommand("Invoke-Parallel")
 					.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
@@ -78,7 +78,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$VerbosePreference='Continue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -99,7 +99,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
 					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
@@ -118,7 +118,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$DebugPreference='Continue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -139,7 +139,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.Commands.Clear();
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
@@ -159,7 +159,7 @@ namespace PSParallelTests
 
 			using (var ps = PowerShell.Create())
 			{
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$WarningPreference='Continue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -179,7 +179,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$WarningPreference='SilentlyContinue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -200,7 +200,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$ErrorActionPreference='Continue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -220,7 +220,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("$ErrorActionPreference='SilentlyContinue'", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -240,7 +240,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("[int]$x=10", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -259,7 +259,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript("[int]$x=10;", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
@@ -278,7 +278,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
@@ -300,7 +300,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
@@ -324,7 +324,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript(@"
 function foo($x) {return $x * 2}
 ", false);
@@ -349,7 +349,7 @@ function foo($x) {return $x * 2}
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript(@"
 function foo($x) {return 2 * $x}
 function bar($x) {return 3 * (foo $x)}
@@ -373,7 +373,7 @@ function bar($x) {return 3 * (foo $x)}
 		public void TestLimitingVariables()
 		{
 			using (PowerShell ps = PowerShell.Create()) {
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript(@"
 $x = 1
 $y = 2
@@ -399,7 +399,7 @@ $y = 2
 		{
 			using (PowerShell ps = PowerShell.Create())
 			{
-				ps.RunspacePool = m_runspacePool;
+				ps.RunspacePool = _runspacePool;
 				ps.AddScript(@"
 function f{1}
 function g{}
@@ -421,7 +421,7 @@ function g{}
 
 		public void Dispose()
 		{
-			m_runspacePool.Dispose();
+			_runspacePool.Dispose();
 		}
 	}
 }
