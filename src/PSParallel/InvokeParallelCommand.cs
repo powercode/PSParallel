@@ -178,8 +178,7 @@ namespace PSParallel
 					m_progressManager.TotalCount = m_input.Count;
 					foreach (var i in m_input)
 					{
-						var processed = m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount();
-						m_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", processed);
+						m_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", m_powershellPool.ProcessedCount);
 						WriteProgress(m_progressManager.ProgressRecord);
 						while (!m_powershellPool.TryAddInput(ScriptBlock, i))
 						{
@@ -263,7 +262,7 @@ namespace PSParallel
 				}		
 				if(!NoProgress)
 				{		
-					m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount + m_powershellPool.GetPartiallyProcessedCount());
+					m_progressManager.UpdateCurrentProgressRecord(m_powershellPool.ProcessedCount);
 					WriteProgress(m_progressManager.ProgressRecord);
 				}
 			}

@@ -19,8 +19,11 @@ namespace PSParallel
 		private readonly List<PowerShellPoolMember> m_poolMembers;
 		private readonly BlockingCollection<PowerShellPoolMember> m_availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
+		private int m_totalPercentComplete;
 
-		public int ProcessedCount => m_processedCount;		
+		public int ProcessedCount => m_processedCount + PartiallyProcessedCount;
+
+		private int PartiallyProcessedCount => m_totalPercentComplete / 100;
 
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
@@ -37,26 +40,6 @@ namespace PSParallel
 
 			m_runspacePool = RunspaceFactory.CreateRunspacePool(initialSessionState);
 			m_runspacePool.SetMaxRunspaces(poolSize);
-		}
-
-		public int GetPartiallyProcessedCount()
-		{
-			var totalPercentComplete = 0;
-			var count = m_poolMembers.Count;
-			for (int i = 0; i < count; ++i)
-			{
-				var percentComplete = m_poolMembers[i].PercentComplete;
-				if (percentComplete < 0)
-				{
-					percentComplete = 0;
-				}
-				else if(percentComplete > 100)
-				{
-					percentComplete = 100;
-				}
-				totalPercentComplete += percentComplete;
-			}			
-			return totalPercentComplete / 100;
 		}
 
 		public bool TryAddInput(ScriptBlock scriptblock,PSObject inputObject)
@@ -126,6 +109,7 @@ namespace PSParallel
 		{
 			Interlocked.Decrement(ref m_busyCount);
 			Interlocked.Increment(ref m_processedCount);
+			Interlocked.Add(ref m_totalPercentComplete, poolmember.PercentComplete);
 			while (!m_availablePoolMembers.TryAdd(poolmember, 1000, m_cancellationToken))
 			{
 				m_cancellationToken.ThrowIfCancellationRequested();
@@ -148,6 +132,11 @@ namespace PSParallel
 				poolMember.Stop();
 			}
 			WaitForAllPowershellCompleted(5000);
+		}
+
+		public void AddProgressChange(int change)
+		{
+			Interlocked.Add(ref m_totalPercentComplete, change);
 		}
 	}
 }
