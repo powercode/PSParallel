@@ -3,13 +3,7 @@ param(
 	[int] $Milliseconds = 500
 )
 
-function new-philosopher {
-	param($name, [string[]] $treats)
-	[PSCustomObject] @{		
-		Name = $name
-		Treats = $treats
-	}
-}
+Import-Module PSParallel -RequiredVersion 2.2.1
 
 function new-philosopher {
 	param($name, [string[]] $treats)
@@ -18,6 +12,7 @@ function new-philosopher {
 		Treats = $treats
 	}
 }
+
 
 $philosopherData = @(
 	    new-philosopher 'Immanuel Kant' 'was a real pissant','who where very rarely stable'
@@ -34,7 +29,7 @@ $philosopherData = @(
     )
 
 
-1..100 | invoke-parallel -Throttle $ThrottleLimit -ProgressActivity "Parallel Philosofers" {
+1..100 | invoke-parallel -Throttle $ThrottleLimit  {
 
 
 

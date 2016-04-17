@@ -290,7 +290,7 @@ namespace PSParallelTests
 				input.Complete();
 				ps.Invoke(input);
 				var progress = ps.Streams.Progress.ReadAll();
-				Assert.AreEqual(11, progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
+				Assert.AreEqual(13, progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
 			}
 		}
 
@@ -369,56 +369,7 @@ function bar($x) {return 3 * (foo $x)}
 			}
 		}
 
-		[TestMethod]
-		public void TestLimitingVariables()
-		{
-			using (PowerShell ps = PowerShell.Create()) {
-				ps.RunspacePool = m_runspacePool;
-				ps.AddScript(@"
-$x = 1
-$y = 2
-	", false);
-
-				ps.AddStatement()
-					.AddCommand("Invoke-Parallel", false)
-					.AddParameter("ImportVariable", 'x')
-					.AddParameter("ScriptBlock", ScriptBlock.Create("$x,$y"))
-					.AddParameter("ThrottleLimit", 1)
-					.AddParameter("NoProgress")
-					.AddParameter("InputObject", 1);
-				
-				var output = ps.Invoke();
-				int x = (int) output[0].BaseObject;
-				Assert.AreEqual(1,x);
-				Assert.IsNull(output[1]);
-				}
-		}
-
-		[TestMethod]
-		public void TestLimitingFunctions()
-		{
-			using (PowerShell ps = PowerShell.Create())
-			{
-				ps.RunspacePool = m_runspacePool;
-				ps.AddScript(@"
-function f{1}
-function g{}
-	", false).Invoke();
-				ps.AddStatement()
-					.AddCommand("Invoke-Parallel", false)
-					.AddParameter("ImportFunction", 'f')
-					.AddParameter("ScriptBlock", ScriptBlock.Create("f;g"))
-					.AddParameter("ThrottleLimit", 1)
-					.AddParameter("NoProgress")
-					.AddParameter("InputObject", 1);
-
-				var output = ps.Invoke();
-				int x = (int)output[0].BaseObject;
-				Assert.AreEqual(1, x);
-				Assert.IsTrue(ps.HadErrors);				
-			}
-		}
-
+	
 		public void Dispose()
 		{
 			m_runspacePool.Dispose();

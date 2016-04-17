@@ -7,31 +7,31 @@ namespace PSParallel
 	class ProgressManager
 	{
 		public int TotalCount { get; set; }
-		private ProgressRecord m_progressRecord;
-		private readonly Stopwatch m_stopwatch;		
+		private readonly ProgressRecord _progressRecord;
+		private readonly Stopwatch _stopwatch;		
 
 		public ProgressManager(int activityId, string activity, string statusDescription, int parentActivityId = -1, int totalCount = 0)
 		{
 			TotalCount = totalCount;
-			m_stopwatch = new Stopwatch();
-			m_progressRecord = new ProgressRecord(activityId, activity, statusDescription) {ParentActivityId = parentActivityId};
+			_stopwatch = new Stopwatch();
+			_progressRecord = new ProgressRecord(activityId, activity, statusDescription) {ParentActivityId = parentActivityId};
 		}
 
 
 		public void UpdateCurrentProgressRecord(int count)
 		{
-			if (!m_stopwatch.IsRunning && TotalCount > 0)
+			if (!_stopwatch.IsRunning && TotalCount > 0)
 			{
-				m_stopwatch.Start();
+				_stopwatch.Start();
 			}			
-			m_progressRecord.RecordType = ProgressRecordType.Processing;
+			_progressRecord.RecordType = ProgressRecordType.Processing;
 			if (TotalCount > 0)
 			{
 				var percentComplete = GetPercentComplete(count);
-				if (percentComplete != m_progressRecord.PercentComplete)
+				if (percentComplete != _progressRecord.PercentComplete)
 				{
-					m_progressRecord.PercentComplete = percentComplete;
-					m_progressRecord.SecondsRemaining = GetSecondsRemaining(count);
+					_progressRecord.PercentComplete = percentComplete;
+					_progressRecord.SecondsRemaining = GetSecondsRemaining(count);
 				}				
 			}			
 		}
@@ -40,34 +40,34 @@ namespace PSParallel
 		{
 			UpdateCurrentProgressRecord(count);
 
-			m_progressRecord.CurrentOperation = TotalCount > 0 ? $"({count}/{TotalCount}) {currentOperation}" : currentOperation;
+			_progressRecord.CurrentOperation = TotalCount > 0 ? $"({count}/{TotalCount}) {currentOperation}" : currentOperation;
 		}
 
-		public ProgressRecord ProgressRecord => m_progressRecord;
+		public ProgressRecord ProgressRecord => _progressRecord;
 		
 
 		public ProgressRecord Completed()
 		{
-			m_stopwatch.Reset();
+			_stopwatch.Reset();
 
-			m_progressRecord.RecordType = ProgressRecordType.Completed;
-			return m_progressRecord;
+			_progressRecord.RecordType = ProgressRecordType.Completed;
+			return _progressRecord;
 		}
 
-		private int GetSecondsRemaining(int count) => count == 0 ? -1 : (int) ((TotalCount - count)*m_stopwatch.ElapsedMilliseconds/1000/count);
+		private int GetSecondsRemaining(int count) => count == 0 ? -1 : (int) ((TotalCount - count)*_stopwatch.ElapsedMilliseconds/1000/count);
 		private int GetPercentComplete(int count) => count*100/TotalCount;
-		public int ActivityId => m_progressRecord.ActivityId;
+		public int ActivityId => _progressRecord.ActivityId;
 	}
 
 
 	class ProgressProjector
 	{
-		private readonly Stopwatch m_stopWatch;
-		private int m_percentComplete;		
+		private readonly Stopwatch _stopWatch;
+		private int _percentComplete;		
 		public ProgressProjector()
 		{
-			m_stopWatch = new Stopwatch();
-			m_percentComplete = -1;
+			_stopWatch = new Stopwatch();
+			_percentComplete = -1;
 		}
 
 		public void ReportProgress(int percentComplete)
@@ -76,23 +76,23 @@ namespace PSParallel
 			{
 				percentComplete = 100;
 			}			
-			m_percentComplete = percentComplete;			
+			_percentComplete = percentComplete;			
 		}
 
-		public bool IsValid => m_percentComplete > 0 && m_stopWatch.IsRunning;
-		public TimeSpan Elapsed => m_stopWatch.Elapsed;
+		public bool IsValid => _percentComplete > 0 && _stopWatch.IsRunning;
+		public TimeSpan Elapsed => _stopWatch.Elapsed;
 		
-		public TimeSpan ProjectedTotalTime => new TimeSpan(Elapsed.Ticks * 100 / m_percentComplete);
+		public TimeSpan ProjectedTotalTime => new TimeSpan(Elapsed.Ticks * 100 / _percentComplete);
 
 		public void Start()
 		{
-			m_stopWatch.Start();
-			m_percentComplete = 0;
+			_stopWatch.Start();
+			_percentComplete = 0;
 		}
 
 		public void Stop()
 		{
-			m_stopWatch.Stop();
+			_stopWatch.Stop();
 		}
 	}
 }

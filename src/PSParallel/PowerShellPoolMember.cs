@@ -127,7 +127,7 @@ namespace PSParallel
 		{
 			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];			
 			m_percentComplete = record.PercentComplete;
-			m_poolStreams.Progress.Add(record);
+			m_poolStreams.AddProgress(record, m_index);
 		}
 
 		private void ErrorOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
