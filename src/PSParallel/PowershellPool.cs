@@ -19,11 +19,8 @@ namespace PSParallel
 		private readonly List<PowerShellPoolMember> _poolMembers;
 		private readonly BlockingCollection<PowerShellPoolMember> _availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
-		private int _totalPercentComplete;
 
-		public int ProcessedCount => _processedCount + PartiallyProcessedCount;
-
-		private int PartiallyProcessedCount => _totalPercentComplete / 100;
+		public int ProcessedCount => _processedCount;		
 
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
@@ -40,6 +37,26 @@ namespace PSParallel
 
 			_runspacePool = RunspaceFactory.CreateRunspacePool(initialSessionState);
 			_runspacePool.SetMaxRunspaces(poolSize);
+		}
+
+		public int GetPartiallyProcessedCount()
+		{
+			var totalPercentComplete = 0;
+			var count = _poolMembers.Count;
+			for (int i = 0; i < count; ++i)
+			{
+				var percentComplete = _poolMembers[i].PercentComplete;
+				if (percentComplete < 0)
+				{
+					percentComplete = 0;
+				}
+				else if(percentComplete > 100)
+				{
+					percentComplete = 100;
+				}
+				totalPercentComplete += percentComplete;
+			}			
+			return totalPercentComplete / 100;
 		}
 
 		public bool TryAddInput(ScriptBlock scriptblock,PSObject inputObject)
@@ -59,10 +76,11 @@ namespace PSParallel
 		{
 			_runspacePool.Open();
 		}
+		
 
 		public bool WaitForAllPowershellCompleted(int timeoutMilliseconds)
 		{
-			Contract.Requires(timeoutMilliseconds >=0);
+			Contract.Requires(timeoutMilliseconds >= 0);
 			var startTicks = Environment.TickCount;
 			var currendTicks = startTicks;
 			while (currendTicks - startTicks < timeoutMilliseconds)
@@ -77,21 +95,20 @@ namespace PSParallel
 					return true;
 				}
 				Thread.Sleep(10);
-
 			}
 			return false;
 		}
 
 		private bool TryWaitForAvailablePowershell(int milliseconds, out PowerShellPoolMember poolMember)
-		{			
-			if(!_availablePoolMembers.TryTake(out poolMember, milliseconds, _cancellationToken))
+		{
+			if (!_availablePoolMembers.TryTake(out poolMember, milliseconds, _cancellationToken))
 			{
 				_cancellationToken.ThrowIfCancellationRequested();
-				Debug.WriteLine($"WaitForAvailablePowershell - TryTake failed");
+				Debug.WriteLine("WaitForAvailablePowershell - TryTake failed");
 				poolMember = null;
 				return false;
 			}
-			
+
 			poolMember.PowerShell.RunspacePool = _runspacePool;
 			Debug.WriteLine($"WaitForAvailablePowershell - Busy: {_busyCount} _processed {_processedCount}, member = {poolMember.Index}");
 			return true;
@@ -109,14 +126,12 @@ namespace PSParallel
 		{
 			Interlocked.Decrement(ref _busyCount);
 			Interlocked.Increment(ref _processedCount);
-			Interlocked.Add(ref _totalPercentComplete, poolmember.PercentComplete);
 			while (!_availablePoolMembers.TryAdd(poolmember, 1000, _cancellationToken))
 			{
 				_cancellationToken.ThrowIfCancellationRequested();
-				Debug.WriteLine($"WaitForAvailablePowershell - TryAdd failed");
-			}			
-			Debug.WriteLine($"ReportAvailable - Busy: {_busyCount} _processed {_processedCount}, member = {poolmember.Index}");	
-			
+				Debug.WriteLine("WaitForAvailablePowershell - TryAdd failed");
+			}
+			Debug.WriteLine($"ReportAvailable - Busy: {_busyCount} _processed {_processedCount}, member = {poolmember.Index}");
 		}
 
 		public void ReportStopped(PowerShellPoolMember powerShellPoolMember)
@@ -132,11 +147,6 @@ namespace PSParallel
 				poolMember.Stop();
 			}
 			WaitForAllPowershellCompleted(5000);
-		}
-
-		public void AddProgressChange(int change)
-		{
-			Interlocked.Add(ref _totalPercentComplete, change);
 		}
 	}
 }

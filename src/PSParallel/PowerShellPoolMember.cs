@@ -5,25 +5,25 @@ namespace PSParallel
 {
 	class PowerShellPoolMember : IDisposable
 	{
-		private readonly PowershellPool _pool;
-		private readonly int _index;
-		private readonly PowerShellPoolStreams _poolStreams;
-		private PowerShell _powerShell;
-		public PowerShell PowerShell => _powerShell;
-		public int Index => _index ;
+		private readonly PowershellPool m_pool;
+		private readonly int m_index;
+		private readonly PowerShellPoolStreams m_poolStreams;
+		private PowerShell m_powerShell;
+		public PowerShell PowerShell => m_powerShell;
+		public int Index => m_index ;
 
-		private readonly PSDataCollection<PSObject> _input =new PSDataCollection<PSObject>();
-		private PSDataCollection<PSObject> _output;
-		private int _percentComplete;
-		public int PercentComplete => _percentComplete;
+		private readonly PSDataCollection<PSObject> m_input =new PSDataCollection<PSObject>();
+		private PSDataCollection<PSObject> m_output;
+		private int m_percentComplete;
+		public int PercentComplete => m_percentComplete;
 		
 
 		public PowerShellPoolMember(PowershellPool pool, int index)
 		{
-			_pool = pool;
-			_index = index;
-			_poolStreams = _pool.Streams;
-			_input.Complete();			
+			m_pool = pool;
+			m_index = index;
+			m_poolStreams = m_pool.Streams;
+			m_input.Complete();			
 			CreatePowerShell();			
 		}
 
@@ -33,13 +33,13 @@ namespace PSParallel
 			{
 				case PSInvocationState.Stopped:
 					ReleasePowerShell();
-					_pool.ReportStopped(this);
+					m_pool.ReportStopped(this);
 					break;
 				case PSInvocationState.Completed:
 				case PSInvocationState.Failed:
 					ReleasePowerShell();
 					CreatePowerShell();
-					_pool.ReportAvailable(this);
+					m_pool.ReportAvailable(this);
 					break;
 			}
 		}
@@ -49,18 +49,18 @@ namespace PSParallel
 			var powerShell = PowerShell.Create();
 			HookStreamEvents(powerShell.Streams);
 			powerShell.InvocationStateChanged += PowerShellOnInvocationStateChanged;
-			_powerShell = powerShell;
-			_output = new PSDataCollection<PSObject>();
-			_output.DataAdded += OutputOnDataAdded;
+			m_powerShell = powerShell;
+			m_output = new PSDataCollection<PSObject>();
+			m_output.DataAdded += OutputOnDataAdded;
 		}
 
 		private void ReleasePowerShell()
 		{
-			UnhookStreamEvents(_powerShell.Streams);
-			_powerShell.InvocationStateChanged -= PowerShellOnInvocationStateChanged;
-			_output.DataAdded -= OutputOnDataAdded;
-			_powerShell.Dispose();
-			_powerShell = null;
+			UnhookStreamEvents(m_powerShell.Streams);
+			m_powerShell.InvocationStateChanged -= PowerShellOnInvocationStateChanged;
+			m_output.DataAdded -= OutputOnDataAdded;
+			m_powerShell.Dispose();
+			m_powerShell = null;
 		}
 
 
@@ -88,92 +88,90 @@ namespace PSParallel
 
 		public void BeginInvoke(ScriptBlock scriptblock, PSObject inputObject)
 		{
-			_percentComplete = 0;
+			m_percentComplete = 0;
 			string command = $"param($_,$PSItem, $PSPArallelIndex,$PSParallelProgressId){scriptblock}";
-			_powerShell.AddScript(command)
+			m_powerShell.AddScript(command)
 				.AddParameter("_", inputObject)
 				.AddParameter("PSItem", inputObject)
-				.AddParameter("PSParallelIndex", _index)
-				.AddParameter("PSParallelProgressId", _index+1000);
-			_powerShell.BeginInvoke(_input, _output);
+				.AddParameter("PSParallelIndex", m_index)
+				.AddParameter("PSParallelProgressId", m_index+1000);
+			m_powerShell.BeginInvoke(m_input, m_output);
 		}
 
 		public void Dispose()
 		{
-			var ps = _powerShell;
+			var ps = m_powerShell;
 			if (ps != null)
 			{
 				UnhookStreamEvents(ps.Streams);
 				ps.Dispose();
 			}
-			_output.Dispose();
-			_input.Dispose();
+			m_output.Dispose();
+			m_input.Dispose();
 		}
 
 		private void OutputOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var item = ((PSDataCollection<PSObject>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Output.Add(item);
+			m_poolStreams.Output.Add(item);
 		}
 
 
 		private void InformationOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var ir = ((PSDataCollection<InformationRecord>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Information.Add(ir);
+			m_poolStreams.Information.Add(ir);
 		}
 
 		private void ProgressOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
-			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];
-			var change = record.PercentComplete - _percentComplete;
-			_percentComplete = record.PercentComplete;
-			_poolStreams.Progress.Add(record);
-			_pool.AddProgressChange(change);
+			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];			
+			m_percentComplete = record.PercentComplete;
+			m_poolStreams.AddProgress(record, m_index);
 		}
 
 		private void ErrorOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var record = ((PSDataCollection<ErrorRecord>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Error.Add(record);
+			m_poolStreams.Error.Add(record);
 		}
 
 		private void DebugOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var record = ((PSDataCollection<DebugRecord>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Debug.Add(record);
+			m_poolStreams.Debug.Add(record);
 		}
 
 		private void WarningOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var record = ((PSDataCollection<WarningRecord>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Warning.Add(record);
+			m_poolStreams.Warning.Add(record);
 		}
 
 		private void VerboseOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
 			var record = ((PSDataCollection<VerboseRecord>)sender)[dataAddedEventArgs.Index];
-			_poolStreams.Verbose.Add(record);
+			m_poolStreams.Verbose.Add(record);
 		}
 
 		public void Stop()
 		{
-			if(_powerShell.InvocationStateInfo.State != PSInvocationState.Stopped) 
+			if(m_powerShell.InvocationStateInfo.State != PSInvocationState.Stopped) 
 			{ 
-				UnhookStreamEvents(_powerShell.Streams);
-				_powerShell.BeginStop(OnStopped, null);
+				UnhookStreamEvents(m_powerShell.Streams);
+				m_powerShell.BeginStop(OnStopped, null);
 			}
 		}
 
 		private void OnStopped(IAsyncResult ar)
 		{
-			var ps = _powerShell;
+			var ps = m_powerShell;
 			if (ps == null)
 			{
 				return;
 			}
 			ps.EndStop(ar);
-			_powerShell = null;
+			m_powerShell = null;
 		}
 	}
 }

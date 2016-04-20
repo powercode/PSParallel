@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Management.Automation;
 
 namespace PSParallel
@@ -56,5 +57,42 @@ namespace PSParallel
 		private int GetSecondsRemaining(int count) => count == 0 ? -1 : (int) ((TotalCount - count)*_stopwatch.ElapsedMilliseconds/1000/count);
 		private int GetPercentComplete(int count) => count*100/TotalCount;
 		public int ActivityId => _progressRecord.ActivityId;
+	}
+
+
+	class ProgressProjector
+	{
+		private readonly Stopwatch _stopWatch;
+		private int _percentComplete;		
+		public ProgressProjector()
+		{
+			_stopWatch = new Stopwatch();
+			_percentComplete = -1;
+		}
+
+		public void ReportProgress(int percentComplete)
+		{
+			if (percentComplete > 100)
+			{
+				percentComplete = 100;
+			}			
+			_percentComplete = percentComplete;			
+		}
+
+		public bool IsValid => _percentComplete > 0 && _stopWatch.IsRunning;
+		public TimeSpan Elapsed => _stopWatch.Elapsed;
+		
+		public TimeSpan ProjectedTotalTime => new TimeSpan(Elapsed.Ticks * 100 / _percentComplete);
+
+		public void Start()
+		{
+			_stopWatch.Start();
+			_percentComplete = 0;
+		}
+
+		public void Stop()
+		{
+			_stopWatch.Stop();
+		}
 	}
 }
