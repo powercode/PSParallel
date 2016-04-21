@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Management.Automation;
-
+using static PSParallel.PsParallelEventSource;
 namespace PSParallel
 {
 	class ProgressManager
@@ -33,7 +33,8 @@ namespace PSParallel
 					_progressRecord.PercentComplete = percentComplete;
 					_progressRecord.SecondsRemaining = GetSecondsRemaining(count);
 				}				
-			}			
+			}
+			Log.UpdateCurrentProgressRecord(count);
 		}
 
 		public void UpdateCurrentProgressRecord(string currentOperation, int count)
@@ -54,8 +55,20 @@ namespace PSParallel
 			return _progressRecord;
 		}
 
-		private int GetSecondsRemaining(int count) => count == 0 ? -1 : (int) ((TotalCount - count)*_stopwatch.ElapsedMilliseconds/1000/count);
-		private int GetPercentComplete(int count) => count*100/TotalCount;
+		private int GetSecondsRemaining(int count)
+		{
+			var secondsRemaining = count == 0 ? -1 : (int) ((TotalCount - count)*_stopwatch.ElapsedMilliseconds/1000/count);
+			Log.SecondsRemaining(count, TotalCount, secondsRemaining, _stopwatch.ElapsedTicks);
+			return secondsRemaining;
+		}
+
+		private int GetPercentComplete(int count)
+		{
+			var percentComplete = count*100/TotalCount;
+			Log.GetProcessComplete(count, TotalCount);
+			return percentComplete;
+		}
+			
 		public int ActivityId => _progressRecord.ActivityId;
 	}
 

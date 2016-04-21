@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Management.Automation;
+using static PSParallel.PsParallelEventSource;
 
 namespace PSParallel
 {
@@ -28,6 +29,7 @@ namespace PSParallel
 
 		public void AddProgress(ProgressRecord progress, int index)
 		{
+			Log.OnProgress(index, progress.PercentComplete, progress.CurrentOperation);
 			DoAddProgress(progress);
 			OnProgressChanged(progress.PercentComplete, index);
 		}

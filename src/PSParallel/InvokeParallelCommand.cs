@@ -7,6 +7,8 @@ using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
 
+using static PSParallel.PsParallelEventSource;
+
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -126,15 +128,23 @@ namespace PSParallel
 
 		InitialSessionState GetSessionState()
 		{
-			if (MyInvocation.BoundParameters.ContainsKey(nameof(InitialSessionState)))
+			try
 			{
-				if (InitialSessionState == null)
+				Log.BeginGetSessionState();
+				if (MyInvocation.BoundParameters.ContainsKey(nameof(InitialSessionState)))
 				{
-					return InitialSessionState.Create();
+					if (InitialSessionState == null)
+					{
+						return InitialSessionState.Create();
+					}
+					return InitialSessionState;
 				}
-				return InitialSessionState;
+				return GetSessionState(SessionState);
 			}
-			return GetSessionState(SessionState);
+			finally
+			{
+				Log.EndGetSessionState();
+			}
 		}
 		
 		
@@ -286,7 +296,7 @@ namespace PSParallel
 					_progressManager.TotalCount = _input.Count;
 					foreach (var i in _input)
 					{
-						var processed = Pool.ProcessedCount + Pool.GetPartiallyProcessedCount();
+						var processed = Pool.GetEstimatedProgressCount();
 						_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", processed);
 						WriteProgress(_progressManager.ProgressRecord);
 						while (!Pool.TryAddInput(ScriptBlock, i))
@@ -298,7 +308,7 @@ namespace PSParallel
 					while (!Pool.WaitForAllPowershellCompleted(100))
 					{
 
-						_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", Pool.ProcessedCount);
+						_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", Pool.GetEstimatedProgressCount());
 						WriteProgress(_progressManager.ProgressRecord);
 
 						if (Stopping)
@@ -322,11 +332,9 @@ namespace PSParallel
 					p.ParentActivityId = _progressManager.ActivityId;
 					WriteProgress(p);
 				}
-				_progressManager.UpdateCurrentProgressRecord(Pool.ProcessedCount + Pool.GetPartiallyProcessedCount());
+				_progressManager.UpdateCurrentProgressRecord(Pool.GetEstimatedProgressCount());
 				WriteProgress(_progressManager.ProgressRecord);
 			}
 		}
-
-
 	}
 }
