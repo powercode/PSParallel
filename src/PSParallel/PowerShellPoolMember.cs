@@ -15,8 +15,12 @@ namespace PSParallel
 		private readonly PSDataCollection<PSObject> m_input =new PSDataCollection<PSObject>();
 		private PSDataCollection<PSObject> m_output;
 		private int m_percentComplete;
-		public int PercentComplete => m_percentComplete;
-		
+		public int PercentComplete
+		{
+			get { return m_percentComplete; }
+			set { m_percentComplete = value; }
+		}
+
 
 		public PowerShellPoolMember(PowershellPool pool, int index)
 		{

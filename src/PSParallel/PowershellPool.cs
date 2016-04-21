@@ -3,29 +3,27 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
+
 
 namespace PSParallel
 {
 	sealed class PowershellPool : IDisposable
 	{
+		private readonly object _countLock = new object();
 		private int _busyCount;
-		private int _processedCount;
 		private readonly CancellationToken _cancellationToken;
 		private readonly RunspacePool _runspacePool;
 		private readonly List<PowerShellPoolMember> _poolMembers;
 		private readonly BlockingCollection<PowerShellPoolMember> _availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
-
-		public int ProcessedCount => _processedCount;		
+		private int _processedCount;
 
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
 			_poolMembers= new List<PowerShellPoolMember>(poolSize);
-			_processedCount = 0;
 			_cancellationToken = cancellationToken;
 
 			for (var i = 0; i < poolSize; i++)
@@ -39,7 +37,7 @@ namespace PSParallel
 			_runspacePool.SetMaxRunspaces(poolSize);
 		}
 
-		public int GetPartiallyProcessedCount()
+		private int GetPartiallyProcessedCount()
 		{
 			var totalPercentComplete = 0;
 			var count = _poolMembers.Count;
@@ -55,8 +53,16 @@ namespace PSParallel
 					percentComplete = 100;
 				}
 				totalPercentComplete += percentComplete;
-			}			
-			return totalPercentComplete / 100;
+			}
+			var partiallyProcessedCount = totalPercentComplete / 100;
+			return partiallyProcessedCount;
+		}
+
+		public int GetEstimatedProgressCount()
+		{
+			lock(_countLock) {
+				return _processedCount + GetPartiallyProcessedCount();
+			}
 		}
 
 		public bool TryAddInput(ScriptBlock scriptblock,PSObject inputObject)
@@ -64,7 +70,7 @@ namespace PSParallel
 			PowerShellPoolMember poolMember;
 			if(!TryWaitForAvailablePowershell(100, out poolMember))
 			{
-				return false;							
+				return false;
 			}
 
 			Interlocked.Increment(ref _busyCount);
@@ -110,7 +116,6 @@ namespace PSParallel
 			}
 
 			poolMember.PowerShell.RunspacePool = _runspacePool;
-			Debug.WriteLine($"WaitForAvailablePowershell - Busy: {_busyCount} _processed {_processedCount}, member = {poolMember.Index}");
 			return true;
 		}
 
@@ -125,13 +130,18 @@ namespace PSParallel
 		public void ReportAvailable(PowerShellPoolMember poolmember)
 		{
 			Interlocked.Decrement(ref _busyCount);
-			Interlocked.Increment(ref _processedCount);
+			lock (_countLock)
+			{
+				_processedCount++;
+				poolmember.PercentComplete = 0;
+			}
+			
+			poolmember.PercentComplete = 0;
 			while (!_availablePoolMembers.TryAdd(poolmember, 1000, _cancellationToken))
 			{
 				_cancellationToken.ThrowIfCancellationRequested();
 				Debug.WriteLine("WaitForAvailablePowershell - TryAdd failed");
 			}
-			Debug.WriteLine($"ReportAvailable - Busy: {_busyCount} _processed {_processedCount}, member = {poolmember.Index}");
 		}
 
 		public void ReportStopped(PowerShellPoolMember powerShellPoolMember)
