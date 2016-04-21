@@ -34,6 +34,7 @@ if(-not (Test-Path $InstallDirectory))
 @(
     'module\PSParallel.psd1'		    
 	'src\PsParallel\bin\Release\PSParallel.dll'
+	'src\PsParallel\bin\Release\Microsoft*.dll'
 ).Foreach{Copy-Item "$rootdir\$_" -Destination $InstallDirectory }
 
 $lang = @('en-us')
