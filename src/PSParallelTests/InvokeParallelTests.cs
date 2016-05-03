@@ -12,36 +12,39 @@ namespace PSParallelTests
 	public sealed class InvokeParallelTests : IDisposable
 	{
 		readonly RunspacePool m_runspacePool;
-
+		InitialSessionState _iss;
 		public InvokeParallelTests()
-		{						
-			var iss = InitialSessionState.Create();
-			iss.LanguageMode = PSLanguageMode.FullLanguage;
-			iss.Commands.Add(new []
-			{
-				new SessionStateCmdletEntry("Write-Error",		typeof(WriteErrorCommand), null),
-				new SessionStateCmdletEntry("Write-Verbose",	typeof(WriteVerboseCommand), null),
-				new SessionStateCmdletEntry("Write-Debug",		typeof(WriteDebugCommand), null),
-				new SessionStateCmdletEntry("Write-Progress",	typeof(WriteProgressCommand), null),
-				new SessionStateCmdletEntry("Write-Warning",	typeof(WriteWarningCommand), null),
-				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
-				new SessionStateCmdletEntry("Invoke-Parallel",	typeof(InvokeParallelCommand), null), 
-			});
-			iss.Providers.Add(new SessionStateProviderEntry("Function", typeof(FunctionProvider), null));
-			iss.Providers.Add(new SessionStateProviderEntry("Variable", typeof(VariableProvider), null));
-			iss.Variables.Add(new []
-			{
-				new SessionStateVariableEntry("ErrorActionPreference", ActionPreference.Continue, "Dictates the action taken when an error message is delivered"), 
-			});
-			m_runspacePool = RunspaceFactory.CreateRunspacePool(iss);
+		{
+			_iss = CreateInitialSessionState();
+			m_runspacePool = RunspaceFactory.CreateRunspacePool(_iss);
 			m_runspacePool.SetMaxRunspaces(10);
 			m_runspacePool.Open();
 		}
+
+		private static InitialSessionState CreateInitialSessionState()
+		{
+			var iss = InitialSessionState.Create();
+			iss.LanguageMode = PSLanguageMode.FullLanguage;
+			iss.Commands.Add(new[]
+			{
+				new SessionStateCmdletEntry("Write-Error",      typeof(WriteErrorCommand), null),
+				new SessionStateCmdletEntry("Write-Verbose",    typeof(WriteVerboseCommand), null),
+				new SessionStateCmdletEntry("Write-Debug",      typeof(WriteDebugCommand), null),
+				new SessionStateCmdletEntry("Write-Progress",   typeof(WriteProgressCommand), null),
+				new SessionStateCmdletEntry("Write-Warning",    typeof(WriteWarningCommand), null),
+				new SessionStateCmdletEntry("Write-Information", typeof(WriteInformationCommand), null),
+				new SessionStateCmdletEntry("Invoke-Parallel",  typeof(InvokeParallelCommand), null),
+			});
+			iss.Providers.Add(new SessionStateProviderEntry("Function", typeof(FunctionProvider), null));
+			iss.Providers.Add(new SessionStateProviderEntry("Variable", typeof(VariableProvider), null));			
+			return iss;
+		}
+
 		[TestMethod]
 		public void TestOutput()
 		{
 			using (var ps = PowerShell.Create())
-			{
+			{				
 				ps.RunspacePool = m_runspacePool;
 
 				ps.AddCommand("Invoke-Parallel")
@@ -79,7 +82,7 @@ namespace PSParallelTests
 			using (var ps = PowerShell.Create())
 			{
 				ps.RunspacePool = m_runspacePool;
-				ps.AddScript("$VerbosePreference='Continue'", false).Invoke();
+				ps.AddScript("$VerbosePreference=[System.Management.Automation.ActionPreference]::Continue", false).Invoke();
 				ps.Commands.Clear();
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
@@ -99,7 +102,8 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				ps.Runspace = RunspaceFactory.CreateRunspace();
+				ps.Runspace.Open();
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
 					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Verbose $_"))
@@ -110,6 +114,7 @@ namespace PSParallelTests
 				Assert.IsFalse(ps.HadErrors, "We don't expect errors here");
 				var vrb = ps.Streams.Verbose.ReadAll();
 				Assert.IsFalse(vrb.Any(v => v.Message == "1"), "No verbose message should be '1'");
+				ps.Runspace.Dispose();
 			}
 		}
 
@@ -117,20 +122,24 @@ namespace PSParallelTests
 		public void TestDebugOutput()
 		{
 			using (var ps = PowerShell.Create())
-			{				
-				ps.RunspacePool = m_runspacePool;
-				ps.AddScript("$DebugPreference='Continue'", false).Invoke();
-				ps.Commands.Clear();
-				ps.AddStatement()
-					.AddCommand("Invoke-Parallel", false)
-					.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Debug $_"))
-					.AddParameter("ThrottleLimit", 1);
-				var input = new PSDataCollection<int> {1, 2, 3, 4, 5};
-				input.Complete();
-				ps.Invoke<int>(input);
-				Assert.IsFalse(ps.HadErrors, "We don't expect errors here");
-				var dbg = ps.Streams.Debug.ReadAll();
-				Assert.IsTrue(dbg.Any(d => d.Message == "1"), "Some debug message should be '1'");
+			{
+				using (var rs = RunspaceFactory.CreateRunspace(_iss))
+				{
+					rs.Open();
+					ps.Runspace = rs;
+					ps.AddScript("$DebugPreference=[System.Management.Automation.ActionPreference]::Continue", false).Invoke();
+					ps.Commands.Clear();
+					ps.AddStatement()
+						.AddCommand("Invoke-Parallel", false)
+						.AddParameter("ScriptBlock", ScriptBlock.Create("Write-Debug $_"))
+						.AddParameter("ThrottleLimit", 1);
+					var input = new PSDataCollection<int> { 1, 2, 3, 4, 5 };
+					input.Complete();
+					ps.Invoke<int>(input);
+					Assert.IsFalse(ps.HadErrors, "We don't expect errors here");
+					var dbg = ps.Streams.Debug.ReadAll();
+					Assert.IsTrue(dbg.Any(d => d.Message == "1"), "Some debug message should be '1'");
+				}
 			}
 		}
 
@@ -279,7 +288,7 @@ namespace PSParallelTests
 			using (var ps = PowerShell.Create())
 			{				
 				ps.RunspacePool = m_runspacePool;
-
+				ps.AddScript("$ProgressPreference='Continue'", false).Invoke();
 				ps.AddStatement()
 					.AddCommand("Invoke-Parallel", false)
 					.AddParameter("ScriptBlock",
@@ -290,7 +299,7 @@ namespace PSParallelTests
 				input.Complete();
 				ps.Invoke(input);
 				var progress = ps.Streams.Progress.ReadAll();
-				Assert.AreEqual(13, progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
+				Assert.AreEqual(12, progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
 			}
 		}
 

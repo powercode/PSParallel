@@ -6,8 +6,9 @@ namespace PSParallel
 	class ProgressManager
 	{
 		public int TotalCount { get; set; }
-		private readonly ProgressRecord _progressRecord;
-		private readonly Stopwatch _stopwatch;		
+		private ProgressRecord _progressRecord;
+		private readonly Stopwatch _stopwatch;
+		private string _currentOperation;
 
 		public ProgressManager(int activityId, string activity, string statusDescription, int parentActivityId = -1, int totalCount = 0)
 		{
@@ -17,29 +18,33 @@ namespace PSParallel
 		}
 
 
-		public void UpdateCurrentProgressRecord(int count)
+		private void UpdateCurrentProgressRecordInternal(int count)
 		{
 			if (!_stopwatch.IsRunning && TotalCount > 0)
 			{
 				_stopwatch.Start();
-			}			
-			_progressRecord.RecordType = ProgressRecordType.Processing;
-			if (TotalCount > 0)
-			{
-				var percentComplete = GetPercentComplete(count);
-				if (percentComplete != _progressRecord.PercentComplete)
-				{
-					_progressRecord.PercentComplete = percentComplete;
-					_progressRecord.SecondsRemaining = GetSecondsRemaining(count);
-				}				
 			}
+			var current = TotalCount > 0 ? $"({count}/{TotalCount}) {_currentOperation}" : _currentOperation;
+			var pr = _progressRecord.Clone();
+			pr.CurrentOperation = current;
+			pr.RecordType = ProgressRecordType.Processing;			
+			if (TotalCount > 0)
+			{				
+				pr.PercentComplete = GetPercentComplete(count);
+				pr.SecondsRemaining = GetSecondsRemaining(count);								
+			}
+			_progressRecord = pr;
+		}		
+
+		public void SetCurrentOperation(string currentOperation)
+		{
+			_currentOperation = currentOperation;
 		}
 
-		public void UpdateCurrentProgressRecord(string currentOperation, int count)
+		public void UpdateCurrentProgressRecord(int count)
 		{
-			UpdateCurrentProgressRecord(count);
-
-			_progressRecord.CurrentOperation = TotalCount > 0 ? $"({count}/{TotalCount}) {currentOperation}" : currentOperation;
+			
+			UpdateCurrentProgressRecordInternal(count);						
 		}
 
 		public ProgressRecord ProgressRecord => _progressRecord;
@@ -47,12 +52,12 @@ namespace PSParallel
 
 		public ProgressRecord Completed()
 		{
-			_stopwatch.Reset();
-
-			_progressRecord.RecordType = ProgressRecordType.Completed;
+			_stopwatch.Reset();			
+			_progressRecord = _progressRecord.WithRecordType(ProgressRecordType.Completed);
 			return _progressRecord;
 		}
 
+		
 		private int GetSecondsRemaining(int count)
 		{
 			var secondsRemaining = count == 0 ? -1 : (int) ((TotalCount - count)*_stopwatch.ElapsedMilliseconds/1000/count);
@@ -103,5 +108,48 @@ namespace PSParallel
 		{
 			_stopWatch.Stop();
 		}
+	}
+
+	static class ProgressRecordExtension
+	{
+		static ProgressRecord CloneProgressRecord(ProgressRecord record)
+		{
+			return new ProgressRecord(record.ActivityId, record.Activity, record.StatusDescription)
+			{
+				CurrentOperation = record.CurrentOperation,
+				ParentActivityId = record.ParentActivityId,
+				SecondsRemaining = record.SecondsRemaining,
+				PercentComplete = record.PercentComplete,
+				RecordType = record.RecordType
+			};
+		}
+
+		public static ProgressRecord Clone(this ProgressRecord record)
+		{
+			return CloneProgressRecord(record);
+		}
+
+		public static ProgressRecord WithCurrentOperation(this ProgressRecord record, string currentOperation)
+		{
+			var r = CloneProgressRecord(record);
+			r.CurrentOperation = currentOperation;
+			return r;
+		}
+
+		public static ProgressRecord WithRecordType(this ProgressRecord record, ProgressRecordType recordType)
+		{
+			var r = CloneProgressRecord(record);
+			r.RecordType = recordType;
+			return r;
+		}
+
+		public static ProgressRecord WithPercentCompleteAndSecondsRemaining(this ProgressRecord record, int percentComplete, int secondsRemaining)
+		{
+			var r = CloneProgressRecord(record);
+			r.PercentComplete = percentComplete;
+			r.SecondsRemaining = secondsRemaining;
+			return r;
+		}
+
 	}
 }

@@ -77,8 +77,9 @@ namespace PSParallel
 			try
 			{
 				string[] noTouchVariables = { "null", "true", "false", "Error" };
-				var variables = sessionState.InvokeProvider.Item.Get("Variable:");
+				var variables = sessionState.InvokeProvider.Item.Get("Variable:");				
 				var psVariables = (IEnumerable<PSVariable>)variables[0].BaseObject;
+				
 				return psVariables.Where(p => !noTouchVariables.Contains(p.Name));
 			}
 			catch (DriveNotFoundException)
@@ -102,11 +103,22 @@ namespace PSParallel
 			foreach (var variable in variables)
 			{
 				var existing = initialSessionState.Variables[variable.Name].FirstOrDefault();
-				if (existing != null && (existing.Options & (ScopedItemOptions.Constant | ScopedItemOptions.ReadOnly)) != ScopedItemOptions.None)
+				if (existing != null)
 				{
-					continue;
+					if ((existing.Options & (ScopedItemOptions.Constant | ScopedItemOptions.ReadOnly)) != ScopedItemOptions.None)
+					{
+						continue;
+					}
+					else
+					{
+						initialSessionState.Variables.Remove(existing.Name, existing.GetType());
+						initialSessionState.Variables.Add(new SessionStateVariableEntry(variable.Name, variable.Value, variable.Description, variable.Options, variable.Attributes));
+					}
 				}
-				initialSessionState.Variables.Add(new SessionStateVariableEntry(variable.Name, variable.Value, variable.Description, variable.Options, variable.Attributes));
+				else
+				{
+					initialSessionState.Variables.Add(new SessionStateVariableEntry(variable.Name, variable.Value, variable.Description, variable.Options, variable.Attributes));
+				}
 			}
 		}
 
@@ -134,7 +146,7 @@ namespace PSParallel
 				}
 				return InitialSessionState;
 			}
-			return GetSessionState(SessionState);
+			return GetSessionState(base.SessionState);
 		}
 		
 		
@@ -143,8 +155,7 @@ namespace PSParallel
 		{
 			ValidateParameters();
 			var iss = GetSessionState();
-			PowershellPool = new PowershellPool(ThrottleLimit, iss, _cancelationTokenSource.Token);
-			PowershellPool.Open();
+			PowershellPool = new PowershellPool(ThrottleLimit, iss, _cancelationTokenSource.Token);			
 			_worker = NoProgress ? (WorkerBase) new NoProgressWorker(this) : new ProgressWorker(this);
 		}
 
@@ -268,6 +279,7 @@ namespace PSParallel
 		{
 			readonly ProgressManager _progressManager;
 			private readonly List<PSObject> _input;
+			private int _lastEstimate = -1;
 			public ProgressWorker(InvokeParallelCommand cmdlet) : base(cmdlet)
 			{
 				_progressManager = new ProgressManager(cmdlet.ProgressId, cmdlet.ProgressActivity, $"Processing with {cmdlet.ThrottleLimit} workers", cmdlet.ParentProgressId);
@@ -282,25 +294,30 @@ namespace PSParallel
 			public override void EndProcessing()
 			{
 				try
-				{
+				{					
 					_progressManager.TotalCount = _input.Count;
+					var lastPercentComplete = -1;
 					foreach (var i in _input)
 					{
 						var processed = Pool.GetEstimatedProgressCount();
-						_progressManager.UpdateCurrentProgressRecord($"Starting processing of {i}", processed);
-						WriteProgress(_progressManager.ProgressRecord);
+						_lastEstimate = processed;
+						_progressManager.SetCurrentOperation($"Starting processing of {i}");
+						_progressManager.UpdateCurrentProgressRecord(processed);
+						var pr = _progressManager.ProgressRecord;
+						if (lastPercentComplete != pr.PercentComplete)
+						{
+							WriteProgress(pr);
+						}
+						
 						while (!Pool.TryAddInput(ScriptBlock, i))
 						{
 							WriteOutputs();
 						}
 					}
-
+					_progressManager.SetCurrentOperation("All work queued. Waiting for remaining work to complete.");										
 					while (!Pool.WaitForAllPowershellCompleted(100))
 					{
-
-						_progressManager.UpdateCurrentProgressRecord("All work queued. Waiting for remaining work to complete.", Pool.GetEstimatedProgressCount());
-						WriteProgress(_progressManager.ProgressRecord);
-
+						WriteProgressIfUpdated();
 						if (Stopping)
 						{
 							return;
@@ -311,6 +328,7 @@ namespace PSParallel
 				}
 				finally
 				{
+					_progressManager.UpdateCurrentProgressRecord(Pool.GetEstimatedProgressCount());
 					WriteProgress(_progressManager.Completed());
 				}
 			}
@@ -319,11 +337,27 @@ namespace PSParallel
 			{
 				foreach (var p in progress)
 				{
-					p.ParentActivityId = _progressManager.ActivityId;
+					if (p.ActivityId != _progressManager.ActivityId)
+					{
+						p.ParentActivityId = _progressManager.ActivityId;
+					}
 					WriteProgress(p);
 				}
-				_progressManager.UpdateCurrentProgressRecord(Pool.GetEstimatedProgressCount());
-				WriteProgress(_progressManager.ProgressRecord);
+				if (progress.Count > 0)
+				{
+					WriteProgressIfUpdated();
+				}
+			}
+
+			private void WriteProgressIfUpdated()
+			{
+				var estimatedCompletedCount = Pool.GetEstimatedProgressCount();
+				if (_lastEstimate != estimatedCompletedCount)
+				{
+					_lastEstimate = estimatedCompletedCount;
+					_progressManager.UpdateCurrentProgressRecord(estimatedCompletedCount);
+					WriteProgress(_progressManager.ProgressRecord);
+				}
 			}
 		}
 	}

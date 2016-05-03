@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Management.Automation;
+using System.Management.Automation.Host;
 using System.Management.Automation.Runspaces;
 using System.Threading;
 
@@ -14,8 +15,7 @@ namespace PSParallel
 	{
 		private readonly object _countLock = new object();
 		private int _busyCount;
-		private readonly CancellationToken _cancellationToken;
-		private readonly RunspacePool _runspacePool;
+		private readonly CancellationToken _cancellationToken;		
 		private readonly List<PowerShellPoolMember> _poolMembers;
 		private readonly BlockingCollection<PowerShellPoolMember> _availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
@@ -28,13 +28,11 @@ namespace PSParallel
 
 			for (var i = 0; i < poolSize; i++)
 			{
-				var powerShellPoolMember = new PowerShellPoolMember(this, i+1);
+				var runspace = RunspaceFactory.CreateRunspace(initialSessionState);
+				var powerShellPoolMember = new PowerShellPoolMember(this, i+1, runspace);
 				_poolMembers.Add(powerShellPoolMember);
 				_availablePoolMembers.Add(powerShellPoolMember);
-			}
-
-			_runspacePool = RunspaceFactory.CreateRunspacePool(initialSessionState);
-			_runspacePool.SetMaxRunspaces(poolSize);
+			}			
 		}
 
 		private int GetPartiallyProcessedCount()
@@ -77,11 +75,7 @@ namespace PSParallel
 			poolMember.BeginInvoke(scriptblock, inputObject);
 			return true;
 		}
-
-		public void Open()
-		{
-			_runspacePool.Open();
-		}
+		
 		
 
 		public bool WaitForAllPowershellCompleted(int timeoutMilliseconds)
@@ -114,8 +108,7 @@ namespace PSParallel
 				poolMember = null;
 				return false;
 			}
-
-			poolMember.PowerShell.RunspacePool = _runspacePool;
+			poolMember.Reset();
 			return true;
 		}
 
@@ -123,8 +116,7 @@ namespace PSParallel
 		public void Dispose()
 		{
 			Streams.Dispose();
-			_availablePoolMembers.Dispose();
-			_runspacePool?.Dispose();
+			_availablePoolMembers.Dispose();			
 		}
 
 		public void ReportAvailable(PowerShellPoolMember poolmember)
