@@ -307,6 +307,7 @@ namespace PSParallel
 						if (lastPercentComplete != pr.PercentComplete)
 						{
 							WriteProgress(pr);
+							lastPercentComplete = pr.PercentComplete;
 						}
 						
 						while (!Pool.TryAddInput(ScriptBlock, i))

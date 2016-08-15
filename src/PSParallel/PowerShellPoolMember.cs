@@ -1,6 +1,7 @@
 using System;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using System.Threading;
 
 namespace PSParallel
 {
@@ -8,8 +9,8 @@ namespace PSParallel
 	{
 		private readonly PowershellPool _pool;
 		private readonly int _index;
+		private readonly InitialSessionState _initialSessionState;
 		private readonly PowerShellPoolStreams _poolStreams;
-		private readonly Runspace _runspace;		
 		private PowerShell _powerShell;
 		public PowerShell PowerShell => _powerShell;
 		public int Index => _index ;
@@ -24,15 +25,14 @@ namespace PSParallel
 		}
 
 
-		public PowerShellPoolMember(PowershellPool pool, int index, Runspace runspace)
+		public PowerShellPoolMember(PowershellPool pool, int index, InitialSessionState initialSessionState)
 		{
 			_pool = pool;
 			_index = index;
-			_runspace = runspace;
-			_runspace.Open();
+			_initialSessionState = initialSessionState;
 			_poolStreams = _pool.Streams;
 			_input.Complete();			
-			CreatePowerShell();			
+			CreatePowerShell(initialSessionState);			
 		}
 
 		private void PowerShellOnInvocationStateChanged(object sender, PSInvocationStateChangedEventArgs psInvocationStateChangedEventArgs)
@@ -44,21 +44,37 @@ namespace PSParallel
 					_pool.ReportStopped(this);
 					break;
 				case PSInvocationState.Completed:
-				case PSInvocationState.Failed:
-					ReleasePowerShell();
-					CreatePowerShell();
+				case PSInvocationState.Failed:					
+					ResetPowerShell();
 					_pool.ReportAvailable(this);
 					break;
 			}
 		}
 
-		private void CreatePowerShell()
+		private void CreatePowerShell(InitialSessionState initialSessionState)
 		{
-			var powerShell = PowerShell.Create();
-			powerShell.Runspace = _runspace;
+			var powerShell = PowerShell.Create(RunspaceMode.NewRunspace);
+			var runspace = RunspaceFactory.CreateRunspace(initialSessionState);
+			runspace.ApartmentState = ApartmentState.MTA;
+			powerShell.Runspace = runspace;
+			runspace.Open();			
 			HookStreamEvents(powerShell.Streams);
 			powerShell.InvocationStateChanged += PowerShellOnInvocationStateChanged;
 			_powerShell = powerShell;
+			_output = new PSDataCollection<PSObject>();
+			_output.DataAdded += OutputOnDataAdded;
+		}
+
+		public void ResetPowerShell()
+		{
+			UnhookStreamEvents(_powerShell.Streams);
+			_powerShell.Runspace.ResetRunspaceState();
+			var runspace = _powerShell.Runspace;
+			_powerShell = PowerShell.Create(RunspaceMode.NewRunspace);
+			_powerShell.Runspace = runspace;
+
+			HookStreamEvents(_powerShell.Streams);
+			_powerShell.InvocationStateChanged += PowerShellOnInvocationStateChanged;			
 			_output = new PSDataCollection<PSObject>();
 			_output.DataAdded += OutputOnDataAdded;
 		}
@@ -68,12 +84,11 @@ namespace PSParallel
 			UnhookStreamEvents(_powerShell.Streams);
 			_powerShell.InvocationStateChanged -= PowerShellOnInvocationStateChanged;
 			_output.DataAdded -= OutputOnDataAdded;
-			_powerShell.Dispose();
-			_powerShell = null;
+			_powerShell.Dispose();			
 		}
 
 
-		private void HookStreamEvents(PSDataStreams streams)
+		private void HookStreamEvents(PSDataStreams streams) 
 		{
 			streams.Debug.DataAdded += DebugOnDataAdded;
 			streams.Error.DataAdded += ErrorOnDataAdded;
@@ -103,13 +118,8 @@ namespace PSParallel
 				.AddParameter("_", inputObject)
 				.AddParameter("PSItem", inputObject)
 				.AddParameter("PSParallelIndex", _index)
-				.AddParameter("PSParallelProgressId", _index+1000);
+				.AddParameter("PSParallelProgressId", _index + 1000);
 			_powerShell.BeginInvoke(_input, _output);
-		}
-
-		internal void Reset()
-		{			
-			_runspace.ResetRunspaceState();
 		}
 
 		public void Dispose()
@@ -118,11 +128,11 @@ namespace PSParallel
 			if (ps != null)
 			{
 				UnhookStreamEvents(ps.Streams);
+				ps.Runspace?.Dispose();
 				ps.Dispose();
 			}
 			_output.Dispose();
-			_input.Dispose();
-			_runspace.Dispose();
+			_input.Dispose();			
 		}
 
 		private void OutputOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
@@ -140,9 +150,9 @@ namespace PSParallel
 
 		private void ProgressOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)
 		{
-			var record = ((PSDataCollection<ProgressRecord>)sender)[dataAddedEventArgs.Index];			
-			_percentComplete = record.PercentComplete;
-			_poolStreams.AddProgress(record, _index);
+			var psDataCollection = ((PSDataCollection<ProgressRecord>) sender);
+			var record = psDataCollection[dataAddedEventArgs.Index];
+			_poolStreams.AddProgress(record, _index);			
 		}
 
 		private void ErrorOnDataAdded(object sender, DataAddedEventArgs dataAddedEventArgs)

@@ -17,6 +17,7 @@ namespace PSParallel
 		private int _busyCount;
 		private readonly CancellationToken _cancellationToken;		
 		private readonly List<PowerShellPoolMember> _poolMembers;
+		private readonly InitialSessionState _initialSessionState;
 		private readonly BlockingCollection<PowerShellPoolMember> _availablePoolMembers = new BlockingCollection<PowerShellPoolMember>(new ConcurrentQueue<PowerShellPoolMember>());
 		public readonly PowerShellPoolStreams Streams = new PowerShellPoolStreams();
 		private int _processedCount;
@@ -24,12 +25,12 @@ namespace PSParallel
 		public PowershellPool(int poolSize, InitialSessionState initialSessionState, CancellationToken cancellationToken)
 		{
 			_poolMembers= new List<PowerShellPoolMember>(poolSize);
+			_initialSessionState = initialSessionState;
 			_cancellationToken = cancellationToken;
 
 			for (var i = 0; i < poolSize; i++)
-			{
-				var runspace = RunspaceFactory.CreateRunspace(initialSessionState);
-				var powerShellPoolMember = new PowerShellPoolMember(this, i+1, runspace);
+			{				
+				var powerShellPoolMember = new PowerShellPoolMember(this, i+1, initialSessionState);
 				_poolMembers.Add(powerShellPoolMember);
 				_availablePoolMembers.Add(powerShellPoolMember);
 			}			
@@ -107,8 +108,7 @@ namespace PSParallel
 				Debug.WriteLine("WaitForAvailablePowershell - TryTake failed");
 				poolMember = null;
 				return false;
-			}
-			poolMember.Reset();
+			}			
 			return true;
 		}
 

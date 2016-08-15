@@ -12,7 +12,7 @@ namespace PSParallelTests
 	public sealed class InvokeParallelTests : IDisposable
 	{
 		readonly RunspacePool m_runspacePool;
-		InitialSessionState _iss;
+		readonly InitialSessionState _iss;
 		public InvokeParallelTests()
 		{
 			_iss = CreateInitialSessionState();
@@ -63,7 +63,7 @@ namespace PSParallelTests
 		{
 			using (var ps = PowerShell.Create())
 			{				
-				ps.RunspacePool = m_runspacePool;
+				//ps.RunspacePool = m_runspacePool;
 
 				ps.AddCommand("Invoke-Parallel")
 					.AddParameter("ScriptBlock", ScriptBlock.Create("$_* 2"))
@@ -157,7 +157,7 @@ namespace PSParallelTests
 				var input = new PSDataCollection<int> {1, 2, 3, 4, 5};
 				input.Complete();
 				ps.Invoke<int>(input);
-				var dbg = ps.Streams.Debug.ReadAll();
+				var dbg = ps.Streams.Debug.ReadAll();				
 				Assert.IsFalse(dbg.Any(d => d.Message == "1"), "No debug message should be '1'");
 			}
 		}
@@ -299,7 +299,28 @@ namespace PSParallelTests
 				input.Complete();
 				ps.Invoke(input);
 				var progress = ps.Streams.Progress.ReadAll();
-				Assert.AreEqual(12, progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
+				Assert.IsTrue(10 < progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
+			}
+		}
+
+		[TestMethod]
+		public void TestProgressOutput2Workers()
+		{
+			using (var ps = PowerShell.Create())
+			{
+				ps.RunspacePool = m_runspacePool;
+				ps.AddScript("$ProgressPreference='Continue'", false).Invoke();
+				ps.AddStatement()
+					.AddCommand("Invoke-Parallel", false)
+					.AddParameter("ScriptBlock",
+						ScriptBlock.Create("Write-Progress -activity 'Test' -Status 'Status' -currentoperation $_"))
+					.AddParameter("ThrottleLimit", 2);
+
+				var input = new PSDataCollection<int> { 1, 2, 3, 4, 5, 6, 7,8, 9,10  };
+				input.Complete();
+				ps.Invoke(input);
+				var progress = ps.Streams.Progress.ReadAll();
+				Assert.IsTrue(19 <= progress.Count(pr => pr.Activity == "Invoke-Parallel" || pr.Activity == "Test"));
 			}
 		}
 
