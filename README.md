@@ -1,7 +1,7 @@
 # PSParallel
 Invoke scriptblocks in parallel runspaces
 
-##Installation
+## Installation
 ```PowerShell
 Install-Module PSParallel
 ```
@@ -13,7 +13,7 @@ Install-Module PSParallel
 
 Variables and functions are captured from the parent session.
 
-##Throttling
+## Throttling
 To control the degree of parallelism, i.e. the number of concurrent runspaces, use the -ThrottleLimit parameter
 
 ```PowerShell
@@ -27,9 +27,9 @@ The overhead of spinning up new PowerShell classes is non-zero. Invoke-Parallel 
 
 ![image](https://github.com/powercode/PSParallel/raw/master/images/Invoke-Parallel.png)
 
-##Contributions
+## Contributions
 Pull requests and/or suggestions are more than welcome.
 
-###Acknowlegementes
+### Acknowlegementes
 The idea and the basis for the implementation comes from [RamblingCookieMonster](https://github.com/RamblingCookieMonster).
 Cudos for that implementation also goes to Boe Prox(@proxb) and Sergei Vorobev(@xvorsx).
