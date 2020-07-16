@@ -1,4 +1,4 @@
-$manPath = Get-ChildItem -recurse $PSScriptRoot/../module -include *.psd1 | select -first 1
+$manPath = Get-ChildItem -recurse $PSScriptRoot/../module -include *.psd1 | Select-Object -first 1
 $man = Test-ModuleManifest $manPath
 
 $name = $man.Name

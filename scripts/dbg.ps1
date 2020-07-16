@@ -35,7 +35,7 @@ $philosopherData = @(
 
 	$pd = $philosopherData[($_ -1)% $philosopherData.Count]
 	
-	1..100 | foreach {
+	1..100 | ForEach-Object {
 		$op = switch($_ % 8)
 		{
 			0 { 'sleeping' }
